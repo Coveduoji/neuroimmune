@@ -1,0 +1,58 @@
+import { useEffect, useState } from 'react';
+import { api } from '../api/client';
+import { navigate } from '../nav';
+import { useTerms } from '../terms';
+import type { DashboardData } from '../types';
+
+export default function Dashboard() {
+  const { t } = useTerms();
+  const [d, setD] = useState<DashboardData | null>(null);
+
+  useEffect(() => {
+    const load = () => { api.dashboard().then(setD); };
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!d) return <div className="page empty">加载中…</div>;
+
+  const { counts, tolerance, innate } = d;
+  const total = Math.max(1, counts.alerts);
+  const denoise = counts.alerts > 0 ? Math.round((counts.alerts - counts.reports) / counts.alerts * 100) : 0;
+
+  return (
+    <div className="page">
+      <div className="page-head"><h2>{t('dashboard')}</h2></div>
+
+      <div className="grid g4" style={{ marginBottom: 16 }}>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.cases}</div><div className="k">案件</div><div className="d">已归案</div></div>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'thalamus' })}><div className="v">{counts.alerts}</div><div className="k">告警</div><div className="d">上板 {counts.surfaced} · 抑制 {counts.suppressed}</div></div>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'thalamus' })}><div className="v">{counts.suppressed}</div><div className="k">被抑制</div><div className="d">留痕可研判</div></div>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.reports}</div><div className="k">深度分析</div><div className="d">唤醒 {counts.reports} 次</div></div>
+      </div>
+
+      <div className="grid g4" style={{ marginBottom: 16 }}>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'hippocampus' })}><div className="v">{counts.artifacts}</div><div className="k">实体</div><div className="d">图节点</div></div>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.attack_chains}</div><div className="k">攻击链</div><div className="d">已拼链</div></div>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'immune' })}><div className="v">{tolerance.length}</div><div className="k">{t('tolerance')}</div><div className="d">白名单</div></div>
+        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'immune' })}><div className="v">{innate.length}</div><div className="k">{t('innate')}</div><div className="d">规则</div></div>
+      </div>
+
+      <div className="card">
+        <div className="sec-label">告警降噪</div>
+        <div className="kpi" style={{ marginBottom: 10 }}>
+          <div className="v">{denoise}%</div>
+          <div className="k">降噪率</div>
+          <div className="d">{counts.alerts} 条告警 → {counts.reports} 条需深度分析</div>
+        </div>
+        <div className="funnel">
+          <div className="frow"><div className="lbl">告警</div><div className="track"><div className="fill" style={{ width: '100%' }} /></div><div className="count">{counts.alerts}</div></div>
+          <div className="frow"><div className="lbl">归案</div><div className="track"><div className="fill" style={{ width: `${Math.round(counts.cases / total * 100)}%` }} /></div><div className="count">{counts.cases}</div></div>
+          <div className="frow"><div className="lbl">深度分析</div><div className="track"><div className="fill teal" style={{ width: `${Math.round(counts.reports / total * 100)}%` }} /></div><div className="count">{counts.reports}</div></div>
+        </div>
+        <p className="muted" style={{ marginTop: 10 }}>把 {counts.alerts} 条告警聚合为 {counts.cases} 个案件，仅 {counts.reports} 个需要深度分析。</p>
+      </div>
+    </div>
+  );
+}

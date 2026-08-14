@@ -1,0 +1,13 @@
+{"time": "03:10", "source": "登录", "asset": "web-01", "type": "登录", "raw": "ops_user 正常登录 web-01"}
+{"time": "03:11", "source": "心跳", "asset": "web-02", "type": "心跳", "raw": "web-02 心跳正常"}
+{"time": "03:12", "source": "登录", "asset": "web-03", "type": "登录", "raw": "dev_user 正常登录 web-03"}
+{"time": "03:13", "source": "流量", "asset": "api-gw", "type": "流量", "raw": "api-gw 流量平稳"}
+{"time": "03:14:07", "source": "身份", "asset": "svc_backup", "type": "登录", "raw": "svc_backup 服务账号凌晨登录了一台三个月没碰过的资产 payroll-db-03"}
+{"time": "03:14:11", "source": "身份", "asset": "svc_backup", "type": "身份", "raw": "检测到 MFA 绕过策略命中 svc_backup"}
+{"time": "03:14:11", "source": "云", "asset": "svc_backup", "type": "流量", "raw": "svc_backup 往陌生 OSS 桶 backup-oss 写入数据"}
+{"time": "03:14:11", "source": "数据", "asset": "svc_backup", "type": "导出", "raw": "svc_backup 触发 payroll-db-03 批量导出任务晚跑 40 分钟"}
+{"time": "03:14:30", "source": "身份", "asset": "hr-tool", "type": "身份", "raw": "检测到 hr-tool 的一次权限变更", "label": "benign"}
+{"time": "03:15", "source": "心跳", "asset": "db-01", "type": "心跳", "raw": "db-01 心跳正常"}
+{"time": "03:16", "source": "登录", "asset": "web-04", "type": "登录", "raw": "qa_user 正常登录 web-04"}
+{"time": "03:17", "source": "流量", "asset": "cdn", "type": "流量", "raw": "cdn 流量正常"}
+{"time": "03:18", "source": "登录", "asset": "web-01", "type": "登录", "raw": "ops_user 再次登录 web-01"}

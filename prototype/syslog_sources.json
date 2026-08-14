@@ -1,0 +1,17 @@
+{
+  "facility": {
+    "local0": "天眼",
+    "local1": "HIDS",
+    "local2": "WAF"
+  },
+  "hostname": {
+    "tiyan": "天眼",
+    "hids": "HIDS",
+    "waf": "WAF"
+  },
+  "tag": {
+    "tiyan": "天眼",
+    "ossec": "HIDS",
+    "modsecurity": "WAF"
+  }
+}

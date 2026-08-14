@@ -1,0 +1,36 @@
+# === 密钥 / 敏感信息（务必忽略）===
+.env
+*.env
+!*.env.example
+session-transcript-*.jsonl
+
+# === 运行时数据库 / 数据 ===
+*.db
+*.sqlite
+backend/data/feedback.jsonl
+
+# === 运行时配置（UI 可改、可能含密钥）===
+backend/*.json
+
+# === 生成数据（保留 sample/day2 源样例）===
+prototype/data/*
+!prototype/data/sample.jsonl
+!prototype/data/day2.jsonl
+
+# === 前端构建产物 ===
+node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# === 编辑器 / 系统 ===
+.DS_Store
+*.swp
+.idea/
+.vscode/

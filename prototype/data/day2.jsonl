@@ -1,0 +1,4 @@
+{"time": "03:20", "source": "身份", "asset": "svc_backup", "type": "登录", "raw": "svc_backup 服务账号凌晨登录 payroll-db-05（同家族新变种）"}
+{"time": "03:21", "source": "身份", "asset": "svc_backup", "type": "身份", "raw": "svc_backup 触发 MFA 绕过策略的变种"}
+{"time": "03:22", "source": "心跳", "asset": "web-05", "type": "心跳", "raw": "web-05 心跳正常"}
+{"time": "03:23", "source": "登录", "asset": "web-06", "type": "登录", "raw": "ops_user 正常登录 web-06"}

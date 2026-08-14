@@ -1,0 +1,255 @@
+<title>神经免疫路由观测</title>
+<style>
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hairline: #e4e5e8;
+  --accent: #2a78d6;
+  --accent-strong: #1c5cab;
+  --accent-soft: #cde2fb;
+  --teal: #1baf7a;
+  --teal-soft: #c7ecdd;
+  --critical: #d03b3b;
+  --warning: #b7791f;
+  --track: #eceef1;
+  --shadow: 0 1px 2px rgba(11,11,11,0.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #171716;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #8a8a86;
+    --hairline: #2c2c2a;
+    --accent: #3987e5;
+    --accent-strong: #6da7ec;
+    --accent-soft: #184f95;
+    --teal: #199e70;
+    --teal-soft: #0f4a35;
+    --critical: #e66767;
+    --warning: #c98500;
+    --track: #262624;
+    --shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #171716;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #8a8a86;
+  --hairline: #2c2c2a;
+  --accent: #3987e5;
+  --accent-strong: #6da7ec;
+  --accent-soft: #184f95;
+  --teal: #199e70;
+  --teal-soft: #0f4a35;
+  --critical: #e66767;
+  --warning: #c98500;
+  --track: #262624;
+  --shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.55;
+  font-size: 15px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; }
+
+/* header */
+.masthead { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; margin: 0; line-height: 1.2; text-wrap: balance; }
+.sub { color: var(--ink-2); max-width: 64ch; margin: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--hairline);
+  font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.chip b { color: var(--ink); font-weight: 600; }
+
+/* sections */
+section { margin-top: 34px; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.sec-head h2 { font-size: 19px; font-weight: 700; margin: 0; }
+.sec-head .note { font-size: 12.5px; color: var(--muted); }
+.card {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow);
+}
+.grid { display: grid; gap: 14px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 760px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+/* hero number */
+.hero { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.hero .num { font-size: 52px; font-weight: 750; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.hero .cap { font-size: 14px; color: var(--ink-2); max-width: 30ch; }
+
+/* funnel */
+.funnel { display: flex; flex-direction: column; gap: 9px; margin-top: 16px; }
+.frow { display: grid; grid-template-columns: 108px 1fr 60px; align-items: center; gap: 12px; }
+.frow .lbl { font-size: 13px; color: var(--ink-2); text-align: right; }
+.frow .count { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; text-align: left; }
+.track { height: 20px; background: var(--track); border-radius: 5px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); border-radius: 5px; transition: width .4s ease; }
+.fill.teal { background: var(--teal); }
+.fill.faint { background: var(--accent-soft); }
+
+/* saved breakdown */
+.saved { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.stat {
+  flex: 1 1 160px; background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: 10px; padding: 12px 14px;
+}
+.stat .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 12.5px; color: var(--ink-2); }
+.stat .d { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* escalated list */
+.escalated { display: flex; flex-direction: column; gap: 16px; }
+.item { border: 1px solid var(--hairline); border-radius: 10px; padding: 14px 16px; background: var(--surface-2); }
+.item .row1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.item .sig { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.item .who { color: var(--ink-2); font-size: 13px; }
+.item .raw { font-size: 13.5px; color: var(--ink); margin: 8px 0 2px; }
+.item .reason { font-size: 12.5px; color: var(--muted); }
+.sigbar { position: relative; height: 14px; background: var(--track); border-radius: 4px; margin-top: 10px; }
+.sigbar .conf { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 4px 0 0 4px; }
+.sigbar .boost { position: absolute; top: 0; bottom: 0; background: var(--teal); }
+.sigbar .line { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--critical); }
+.sigbar .line::after { content: attr(data-lbl); position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--critical); white-space: nowrap; }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.legend .c::before { background: var(--accent); }
+.legend .b::before { background: var(--teal); }
+
+/* tags */
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+.tag.innate { background: var(--teal-soft); color: var(--teal); }
+.tag.benign { background: var(--accent-soft); color: var(--accent-strong); }
+.tag.warn { background: #f6e8c8; color: var(--warning); }
+.tag.up { background: var(--accent); color: #fff; }
+.tag.down { background: var(--track); color: var(--muted); }
+.sup-item { padding: 9px 0; border-bottom: 1px dashed var(--hairline); }
+.sup-item:last-child { border-bottom: none; }
+.sup-why { font-size: 12px; color: var(--muted); font-weight: 600; }
+.sup-raw { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.gedge { stroke: var(--muted); stroke-width: 1.5; opacity: 0.5; }
+.gnode { font-size: 10px; fill: var(--ink-2); }
+.gtype { font-size: 8px; fill: var(--muted); }
+.graph-svg { display: block; margin: 0 auto 14px; }
+.rpt-head { font-size: 13px; font-weight: 700; color: var(--ink); }
+.rpt-verdict { display: inline-block; padding: 1px 8px; border-radius: 5px; font-size: 12px; font-weight: 600; margin-left: 6px; }
+
+/* deep analysis */
+details { border: 1px solid var(--hairline); border-radius: 10px; margin-top: 6px; background: var(--surface); }
+details summary { cursor: pointer; padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--ink-2); list-style: none; }
+details summary::before { content: "▸ "; color: var(--accent); }
+details[open] summary::before { content: "▾ "; }
+details .body { padding: 4px 16px 16px; font-size: 13.5px; white-space: pre-wrap; color: var(--ink-2); }
+
+/* memory */
+.mem { display: flex; flex-direction: column; gap: 12px; }
+.mem-item { border-left: 3px solid var(--teal); padding: 4px 0 4px 14px; }
+.mem-item .sum { font-size: 14px; }
+.mem-item .ttps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ttps .t { font-size: 11.5px; background: var(--teal-soft); color: var(--teal); padding: 2px 8px; border-radius: 5px; font-weight: 600; }
+.kv { display: flex; flex-wrap: wrap; gap: 8px; }
+.kv .k { font-size: 12px; background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 6px; padding: 4px 9px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+/* knob */
+.knobs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 760px) { .knobs { grid-template-columns: repeat(2, 1fr); } }
+.knob { border: 1px solid var(--hairline); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); }
+.knob.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.knob .name { font-weight: 700; font-size: 14px; }
+.knob .vals { font-size: 12px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.knob .vals b { color: var(--ink-2); font-weight: 600; }
+
+.foot { margin-top: 40px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--hairline); padding-top: 16px; }
+.empty { color: var(--ink-2); padding: 24px; }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; background: var(--track); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">神经免疫 · 路由观测（不是告警大屏）</div>
+    <h1>贵模型只醒了 1 个案件</h1>
+    <p class="sub">这页只讲三件事：<b>省</b>（把分析师从告警海里筛出来）、<b>学</b>（耐受与固有免疫记下了什么）、<b>调</b>（风险旋钮拨到哪一档）。</p>
+    <div class="meta">
+      <span class="chip">旋钮 <b>正常</b></span>
+      <span class="chip">预算 <b>2</b> 次/轮</span>
+      <span class="chip">信号源 <b>/tmp/fresh.jsonl</b></span>
+      <span class="chip">杏仁核 <b>OpenAICompatClient</b></span>
+      <span class="chip">系统2 <b>OpenAICompatClient</b></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>省 · 沉睡经济学</h2><span class="note">信号从进场到唤醒贵模型的漏斗</span></div>
+    <div class="card">
+      <div class="hero"><div class="num">1<span style="font-size:0.5em;color:var(--muted)"> / 2</span></div><div class="cap">条信号里，只有这么多进入深度分析——其余被边缘筛掉，且每一条都留痕可查。</div></div>
+      <div class="funnel"><div class="frow"><div class="lbl">信号总数</div><div class="track"><div class="fill accent" style="width:100.0%"></div></div><div class="count">2</div></div><div class="frow"><div class="lbl">上板</div><div class="track"><div class="fill accent" style="width:50.0%"></div></div><div class="count">1</div></div><div class="frow"><div class="lbl">归案分量</div><div class="track"><div class="fill accent" style="width:50.0%"></div></div><div class="count">1</div></div><div class="frow"><div class="lbl">顶出案件</div><div class="track"><div class="fill accent" style="width:50.0%"></div></div><div class="count">1</div></div><div class="frow"><div class="lbl">唤醒系统2</div><div class="track"><div class="fill teal" style="width:50.0%"></div></div><div class="count">1</div></div></div>
+      <div class="saved"><div class="stat"><div class="v">0</div><div class="k">耐受抑制</div><div class="d">已知好 · 白名单静默</div></div><div class="stat"><div class="v">0</div><div class="k">固有免疫秒拦</div><div class="d">已知坏 · 规则秒拦</div></div><div class="stat"><div class="v">1</div><div class="k">杏仁核抑制</div><div class="d">便宜模型判低分静默</div></div><div class="stat"><div class="v">0</div><div class="k">顶出未深想</div><div class="d">预算不够 / 固有免疫已识</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>图 · 实体关联</h2><span class="note">实体为点、共现为边，连通分量 = 案件</span></div>
+    <div class="card"><svg viewBox="0 0 400 300" class="graph-svg" role="img" aria-label="告警实体图"><line x1="200" y1="30" x2="200" y2="270" class="gedge"/><circle cx="200" cy="30" r="13" fill="var(--accent)"/><text x="200" y="30" dy="-20" text-anchor="middle" class="gnode">db-admin</text><text x="200" y="30" dy="5" text-anchor="middle" class="gtype">asset</text><circle cx="200" cy="270" r="13" fill="var(--teal)"/><text x="200" y="270" dy="-20" text-anchor="middle" class="gnode">payroll-prod</text><text x="200" y="270" dy="5" text-anchor="middle" class="gtype">id</text></svg><div class="mem" style="margin-top:8px"><div class="sup-item"><div class="sup-why">案件 4994e42a82d3</div><div class="sup-raw">db-admin · payroll-prod</div></div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>黑板 · 全局工作空间</h2><span class="note">所有上板信号，按 correlation_uid 归案</span></div>
+    <div class="card"><div class="escalated"><div class="item"><div class="row1"><span class="sig">0.95</span><span class="who">[03:30] 身份/登录 · asset=db-admin</span><span class="tag up">顶出</span></div><div class="raw">db-admin 服务账号凌晨异常登录 payroll-prod 且触发 MFA 绕过</div><div class="reason">杏仁核：服务账号在凌晨异常登录生产库且触发MFA绕过，属于高危异常行为。</div><div class="reason">归案：<code>4994e42a82d3</code></div></div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>系统2 · 结构化调查</h2><span class="note">定性 / 证据 / IOC / 待查，反幻觉纪律</span></div>
+    <div class="card"><div class="escalated"><details open><summary class="rpt-head">案件 4994e42a82d3<span class="rpt-verdict">Suspicious</span> · 置信度 Medium</summary><div class="body"><b>摘要</b>：db-admin 服务账号于 03:30 异常登录 payroll-prod，并触发 MFA 绕过，这一组合表明可能存在有效凭证滥用或身份认证绕过。服务账号通常不用于交互式登录，且 MFA 绕过属强恶意信号，但目前仅有单一身份侧证据，尚无源 IP、会话结果或后续操作日志，无法确证攻击是否成功。该事件需要立即调查认证日志和数据库访问记录，以确认是否发生未授权数据访问。
+• 03:30 身份系统记录 db-admin 服务账号对 payroll-prod 发起登录，并标记为异常。 → 服务账号在凌晨非工作时间访问生产数据库，属于高风险行为，可能表示攻击者使用窃取的凭据进行横向移动或权限滥用。
+• 该登录过程触发了 MFA 绕过。 → MFA 绕过意味着即使有多因素保护，身份验证仍可能被攻破，显著增加了账号已被控制的可能性。
+↳ Initial Access: 攻击者可能通过有效账号（db-admin）获得对 payroll-prod 的初始访问权限。依据是该服务账号发生异常登录且触发 MFA 绕过，符合 T1078 Valid Accounts 的行为特征，但成功与否尚未确认。
+<b>IOC</b>：db-admin、payroll-prod
+<b>待查</b>：该登录是否最终成功，以及攻击者是否已获得数据库会话。；源 IP 地址、地理位置、用户代理等网络侧信息缺失，无法评估攻击来源。；MFA 绕过的具体技术方式（如会话重放、推送轰炸、认证后门）未知。；db-admin 账号是否有合法运维计划或变更窗口对应此次登录行为。；payroll-prod 上是否发生了后续横向移动或数据外泄活动。
+<b>处置</b>：立即禁用 db-admin 服务账号并撤销其所有活跃会话，同时重置该账号的密码和关联密钥。；紧急审核 payroll-prod 在 03:30 前后的数据库查询、导出和权限变更日志，确认是否有异常数据访问。；全面排查该账号过去 7 天的登录记录，比对 IP、时间、设备特征，识别其他异常登录行为。；调查身份认证系统中触发 MFA 绕过的具体原因，检查相关认证策略是否存在漏洞或配置缺陷。；对 payroll-prod 数据库进行取证快照，并检查是否有数据泄露到外部网络或非预期存储位置。
+</div></details></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>被抑制的信号 · 可审计</h2><span class="note">不是丢弃，是降级留痕——每条都能查为什么被压</span></div>
+    <div class="card"><details open><summary>本轮降级 1 条</summary><div class="escalated"><div class="sup-item"><div class="sup-why">杏仁核低置信度（0.00 &lt; 抑制线 0.55）</div><div class="sup-raw">03:31 · web-x 心跳 · conf=0.0 · web-x 心跳正常</div></div></div></details></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>学 · 免疫记忆</h2><span class="note">越用越懂的累积</span></div>
+    <div class="grid"><div class="sec-head"><h2>免疫耐受白名单</h2><span class="note">已知好 → 静默</span></div><div class="card"><div class="kv"><span class="k">hr-tool · 身份</span></div></div><div class="sec-head"><h2>固有免疫规则</h2><span class="note">已知坏 → 边缘秒拦</span></div><div class="card"><div class="kv"><span class="k">svc_backup · 导出</span><span class="k">svc_backup · 流量</span><span class="k">svc_backup · 登录</span><span class="k">svc_backup · 身份</span></div></div><div class="sec-head"><h2>检索记忆</h2><span class="note">海马体夜里沉淀，跨天累积</span></div><div class="card"><div class="mem"><div class="mem-item"><div class="sum">备份服务账号 svc_backup 凌晨发生异常登录、MFA绕过、向陌生OSS桶写数据及数据库批量导出延迟等系列行为，疑似数据外泄或攻击。</div><div class="ttps"><span class="t">服务账号异常登录</span><span class="t">MFA绕过</span><span class="t">数据外传至陌生云存储</span><span class="t">异常批量导出</span></div></div></div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>调 · 风险旋钮</h2><span class="note">当前档位高亮</span></div>
+    <div class="knobs"><div class="knob"><div class="name">宽松</div><div class="vals">抑制线 <b>0.75</b> · 顶出线 <b>0.85</b> · 预算 <b>1</b></div></div><div class="knob active"><div class="name">正常</div><div class="vals">抑制线 <b>0.55</b> · 顶出线 <b>0.75</b> · 预算 <b>2</b></div></div><div class="knob"><div class="name">保守</div><div class="vals">抑制线 <b>0.4</b> · 顶出线 <b>0.62</b> · 预算 <b>3</b></div></div><div class="knob"><div class="name">战时</div><div class="vals">抑制线 <b>0.25</b> · 顶出线 <b>0.45</b> · 预算 <b>99</b></div></div></div>
+  </section>
+
+  <footer class="foot">
+    黑板是路由决策点，不是展示屏——这页观测的是「省 / 学 / 调」，不是告警墙。<br>
+    重新生成：<code>python3 main.py</code> → <code>python3 visualize.py</code>
+  </footer>
+</div>
