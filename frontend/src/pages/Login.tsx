@@ -27,12 +27,29 @@ export default function Login({ onLogin }: { onLogin: (user: AuthUser) => void }
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <div className="login-brand"><span className="logo">🧠</span> 神经免疫 · 工作台</div>
-        <div className="muted" style={{ margin: '4px 0 20px' }}>登录后进入安全运营工作台</div>
-        <input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} placeholder="用户名" />
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="密码" />
+        <div className="login-brand">
+          <span className="login-logo">🧠</span>
+          <div>
+            <div className="login-title">神经免疫</div>
+            <div className="login-sub">安全运营工作台 · 登录</div>
+          </div>
+        </div>
+
+        <div className="login-fields">
+          <label className="field">
+            <span>用户名</span>
+            <input autoFocus value={username} onChange={(e) => setUsername(e.target.value)}
+              placeholder="请输入用户名" autoComplete="username" />
+          </label>
+          <label className="field">
+            <span>密码</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="请输入密码" autoComplete="current-password" />
+          </label>
+        </div>
+
         {error && <div className="login-err">{error}</div>}
-        <button className="btn primary" type="submit" disabled={busy || !username || !password}>
+        <button className="btn primary login-btn" type="submit" disabled={busy || !username || !password}>
           {busy ? '登录中…' : '登录'}
         </button>
       </form>

@@ -274,13 +274,15 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
             <div className="card">
               <div className="sec-label">数据接入（syslog）</div>
               {ingest && (
-                <div className="field-row" style={{ marginTop: 10 }}>
-                  <Field label="syslog 地址"><input value={ingest.syslog_bind} onChange={(e) => patchIngest('syslog_bind', e.target.value)} /></Field>
-                  <Field label="syslog 端口"><input type="number" value={ingest.syslog_port} onChange={(e) => patchIngest('syslog_port', +e.target.value)} /></Field>
-                  <Field label="巩固间隔（秒）"><input type="number" value={ingest.consolidate_interval} onChange={(e) => patchIngest('consolidate_interval', +e.target.value)} /></Field>
-                  <Field label="API token"><input value={ingest.api_token} placeholder="••••（空 = 免鉴权）" onChange={(e) => patchIngest('api_token', e.target.value)} /></Field>
-                  <button className="btn primary" onClick={saveIngest}>保存</button>
-                </div>
+                <>
+                  <div className="grid g2" style={{ marginTop: 10 }}>
+                    <Field label="syslog 地址"><input value={ingest.syslog_bind} onChange={(e) => patchIngest('syslog_bind', e.target.value)} /></Field>
+                    <Field label="syslog 端口"><input type="number" value={ingest.syslog_port} onChange={(e) => patchIngest('syslog_port', +e.target.value)} /></Field>
+                    <Field label="巩固间隔（秒）"><input type="number" value={ingest.consolidate_interval} onChange={(e) => patchIngest('consolidate_interval', +e.target.value)} /></Field>
+                    <Field label="API token"><input value={ingest.api_token} placeholder="••••（空 = 免鉴权）" onChange={(e) => patchIngest('api_token', e.target.value)} /></Field>
+                  </div>
+                  <button className="btn primary" onClick={saveIngest} style={{ marginTop: 14 }}>保存</button>
+                </>
               )}
               <p className="muted" style={{ marginTop: 8 }}>syslog 地址/端口改后需重启后端；巩固间隔与 API token 立即生效。</p>
             </div>

@@ -61,50 +61,52 @@ export default function Thalamus() {
         </select>
       </div>
 
-      <div className="card">
-        {!data ? <div className="muted">加载中…</div> : data.items.length === 0 ? (
-          <div className="muted">没有告警。</div>
-        ) : data.items.map((a) => (
-          <div key={a.id} className="alert-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <div className="meta">
-                [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
-                {a.suppressed ? <span className="tag" style={{ marginLeft: 6 }}>被抑制</span> : null}
-                {a.innate ? <span className="tag up" style={{ marginLeft: 6 }}>固有免疫</span> : null}
+      <div className="thalamus-grid">
+        <div className="card" style={{ minWidth: 0 }}>
+          {!data ? <div className="muted">加载中…</div> : data.items.length === 0 ? (
+            <div className="muted">没有告警。</div>
+          ) : data.items.map((a) => (
+            <div key={a.id} className="alert-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div className="meta">
+                  [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
+                  {a.suppressed ? <span className="tag" style={{ marginLeft: 6 }}>被抑制</span> : null}
+                  {a.innate ? <span className="tag up" style={{ marginLeft: 6 }}>固有免疫</span> : null}
+                </div>
+                <div className="raw">{a.raw}</div>
+                {a.suppressed && a.why ? <div className="muted" style={{ fontSize: 12 }}>原因：{a.why}</div> : null}
+                {a.case_uid ? (
+                  <div className="meta">案件 <code style={{ cursor: 'pointer', color: 'var(--accent)' }}
+                    onClick={() => navigate({ caseId: a.case_id! })}>{a.case_uid}</code></div>
+                ) : null}
               </div>
-              <div className="raw">{a.raw}</div>
-              {a.suppressed && a.why ? <div className="muted" style={{ fontSize: 12 }}>原因：{a.why}</div> : null}
-              {a.case_uid ? (
-                <div className="meta">案件 <code style={{ cursor: 'pointer', color: 'var(--accent)' }}
-                  onClick={() => navigate({ caseId: a.case_id! })}>{a.case_uid}</code></div>
-              ) : null}
+              {a.suppressed ? <button className="btn" onClick={() => restore(a.id)}>放回</button> : null}
             </div>
-            {a.suppressed ? <button className="btn" onClick={() => restore(a.id)}>放回</button> : null}
-          </div>
-        ))}
-        {pages > 1 && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-            <button className="btn" disabled={page === 0} onClick={() => setPage(page - 1)}>上一页</button>
-            <span className="muted">{page + 1} / {pages}</span>
-            <button className="btn" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>下一页</button>
-          </div>
-        )}
-      </div>
+          ))}
+          {pages > 1 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+              <button className="btn" disabled={page === 0} onClick={() => setPage(page - 1)}>上一页</button>
+              <span className="muted">{page + 1} / {pages}</span>
+              <button className="btn" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>下一页</button>
+            </div>
+          )}
+        </div>
 
-      <div className="card">
-        <div className="sec-label">决策留痕（为什么没深想 / 为什么被拦）</div>
-        {!audit ? <div className="muted">加载中…</div> : audit.length === 0 ? (
-          <div className="muted">暂无留痕。</div>
-        ) : (
-          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-            {audit.map((x) => (
-              <div key={x.id} className="alert-item">
-                <div className="meta">[{x.created_at}] <b>{x.action}</b> · {x.entity}</div>
-                <div className="raw">{x.changes}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="card sticky" style={{ minWidth: 0 }}>
+          <div className="sec-label">决策留痕（为什么没深想 / 为什么被拦）</div>
+          {!audit ? <div className="muted">加载中…</div> : audit.length === 0 ? (
+            <div className="muted">暂无留痕。</div>
+          ) : (
+            <div style={{ maxHeight: 'calc(100vh - 150px)', overflowY: 'auto' }}>
+              {audit.map((x) => (
+                <div key={x.id} className="alert-item">
+                  <div className="meta">[{x.created_at}] <b>{x.action}</b> · {x.entity}</div>
+                  <div className="raw">{x.changes}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
