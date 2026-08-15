@@ -29,6 +29,7 @@ export const api = {
   alertDisposition: (alertId: number, verdict: string) =>
     j(`/alerts/${alertId}/disposition`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ verdict }) }),
   dashboard: () => j<import('../types').DashboardData>('/dashboard'),
+  trend: (range = '24h') => j<import('../types').TrendData>(`/trend?range=${range}`),
   setKnob: (knob: string) =>
     j(`/knob`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ knob }) }),
   suppressed: () => j<any[]>('/suppressed'),

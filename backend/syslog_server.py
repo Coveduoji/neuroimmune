@@ -28,10 +28,11 @@ def _udp_loop(bind: str, port: int, q: queue.Queue, stop: threading.Event) -> No
     sock.bind((bind, port))
     while not stop.is_set():
         try:
-            data, _ = sock.recvfrom(65535)
+            data, addr = sock.recvfrom(65535)
+            src_ip = addr[0] if addr else ""
             for line in data.decode("utf-8", "replace").splitlines():
                 if line.strip():
-                    q.put(line)
+                    q.put((src_ip, line))
         except OSError:
             break
 
@@ -43,20 +44,21 @@ def _tcp_loop(bind: str, port: int, q: queue.Queue, stop: threading.Event) -> No
     sock.listen(50)
     while not stop.is_set():
         try:
-            conn, _ = sock.accept()
+            conn, addr = sock.accept()
         except OSError:
             break
-        threading.Thread(target=_tcp_conn, args=(conn, q, stop), daemon=True).start()
+        threading.Thread(target=_tcp_conn, args=(conn, addr, q, stop), daemon=True).start()
 
 
-def _tcp_conn(conn: socket.socket, q: queue.Queue, stop: threading.Event) -> None:
+def _tcp_conn(conn: socket.socket, addr, q: queue.Queue, stop: threading.Event) -> None:
+    src_ip = addr[0] if addr else ""
     with conn:
         f = conn.makefile("r", encoding="utf-8", errors="replace")
         for line in f:
             if stop.is_set():
                 break
             if line.strip():
-                q.put(line.strip())
+                q.put((src_ip, line.strip()))
 
 
 # 健康监控用的状态
@@ -80,10 +82,10 @@ def start(bind: str | None = None, port: int | None = None) -> None:
         global last_ingest
         while not stop.is_set():
             try:
-                line = q.get(timeout=1)
+                src_ip, line = q.get(timeout=1)
             except queue.Empty:
                 continue
-            sig = syslog_parser.parse_line(line)
+            sig = syslog_parser.parse_line(line, src_ip)
             if sig is None:
                 continue
             try:

@@ -13,5 +13,9 @@
     "tiyan": "天眼",
     "ossec": "HIDS",
     "modsecurity": "WAF"
+  },
+  "ip": {
+    "1.2.3.4": "天眼",
+    "2.3.4.5": "HIDS"
   }
 }

@@ -46,17 +46,21 @@ def _load_sources() -> dict:
         return {}
 
 
-def _source(fac: str, host: str = "", tag: str = "") -> str:
+def _source(fac: str, host: str = "", tag: str = "", src_ip: str = "") -> str:
     cfg = _load_sources()
-    # 1) tag 最精确
+    # 1) 来源 IP 最精确（网络发送方地址；子串匹配，可用完整 IP 或网段前缀如 "10.20."）
+    for pat, label in cfg.get("ip", {}).items():
+        if pat and str(pat) in src_ip:
+            return label
+    # 2) tag 次之
     for pat, label in cfg.get("tag", {}).items():
         if pat and str(pat).lower() in tag.lower():
             return label
-    # 2) hostname 次之
+    # 3) hostname
     for pat, label in cfg.get("hostname", {}).items():
         if pat and str(pat).lower() in host.lower():
             return label
-    # 3) facility：内置默认 + 配置覆盖
+    # 4) facility：内置默认 + 配置覆盖
     merged = dict(_SOURCE)
     merged.update(cfg.get("facility", {}))
     if fac in merged:
@@ -74,17 +78,17 @@ def _extract_pri(line: str) -> tuple[int | None, str]:
     return None, line
 
 
-def _build(time: str, host: str, fac: str, tag: str, msg: str) -> dict:
+def _build(time: str, host: str, fac: str, tag: str, msg: str, src_ip: str = "") -> dict:
     return {
         "time": time or "-",
-        "source": _source(fac, host, tag),
+        "source": _source(fac, host, tag, src_ip),
         "asset": host or "localhost",
         "type": fac,
         "raw": msg,
     }
 
 
-def _parse_5424(rest: str, fac: str) -> dict | None:
+def _parse_5424(rest: str, fac: str, src_ip: str = "") -> dict | None:
     # TIMESTAMP HOST APP PROCID MSGID [SD] MSG
     parts = rest.split(" ", 5)
     if len(parts) < 2:
@@ -103,10 +107,10 @@ def _parse_5424(rest: str, fac: str) -> dict | None:
             msg = msg[2:].strip()
         elif msg == "-":
             msg = ""
-    return _build(ts, host, fac, tag, msg)
+    return _build(ts, host, fac, tag, msg, src_ip)
 
 
-def _parse_3164(rest: str, fac: str) -> dict | None:
+def _parse_3164(rest: str, fac: str, src_ip: str = "") -> dict | None:
     # TIMESTAMP HOST TAG[pid]: MSG
     m = re.match(r"^([A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(.*)$", rest)
     ts, tail = (m.group(1), m.group(2)) if m else ("", rest)
@@ -117,11 +121,15 @@ def _parse_3164(rest: str, fac: str) -> dict | None:
         tag, msg = tm.group(1), tm.group(2)
     else:
         msg = body.strip()
-    return _build(ts, host, fac, tag, msg)
+    return _build(ts, host, fac, tag, msg, src_ip)
 
 
-def parse_line(line: str) -> dict | None:
-    """解析一行 syslog → 信号 dict；解析不出返回 None。"""
+def parse_line(line: str, src_ip: str = "") -> dict | None:
+    """解析一行 syslog → 信号 dict；解析不出返回 None。
+
+    src_ip 是网络发送方 IP（syslog 接收端从 UDP/TCP 对端地址捕获），
+    用于「来源 IP → 来源名」映射（如 1.2.3.4 → 天眼）。
+    """
     line = line.strip()
     if not line:
         return None
@@ -130,8 +138,8 @@ def parse_line(line: str) -> dict | None:
     # RFC5424：PRI 后紧跟版本号（纯数字）
     if re.match(r"^\d+\s", rest):
         rest = rest.split(" ", 1)[1]
-        return _parse_5424(rest, fac)
+        return _parse_5424(rest, fac, src_ip)
     # RFC3164：要么有 PRI，要么有可识别的 "Mmm dd hh:mm:ss" 时间戳，否则不算 syslog
     if pri is None and not re.match(r"^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}", rest):
         return None
-    return _parse_3164(rest, fac)
+    return _parse_3164(rest, fac, src_ip)

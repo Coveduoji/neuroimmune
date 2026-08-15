@@ -3,19 +3,29 @@ import { api } from '../api/client';
 import { navigate } from '../nav';
 import { useTerms } from '../terms';
 import ExportReport from '../components/ExportReport';
-import type { DashboardData } from '../types';
+import TrendChart from '../components/TrendChart';
+import type { DashboardData, TrendData } from '../types';
 
 export default function Dashboard() {
   const { t } = useTerms();
   const [d, setD] = useState<DashboardData | null>(null);
+  const [trend, setTrend] = useState<TrendData | null>(null);
+  const [trendRange, setTrendRange] = useState('24h');
   const [showExport, setShowExport] = useState(false);
 
   useEffect(() => {
     const load = () => { api.dashboard().then(setD); };
     load();
-    const t = setInterval(load, 5000);
+    const t = setInterval(load, 15000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    const loadTrend = () => { api.trend(trendRange).then(setTrend); };
+    loadTrend();
+    const t = setInterval(loadTrend, 15000);
+    return () => clearInterval(t);
+  }, [trendRange]);
 
   if (!d) return <div className="page empty">加载中…</div>;
 
@@ -45,7 +55,7 @@ export default function Dashboard() {
         <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'immune' })}><div className="v">{innate.length}</div><div className="k">{t('innate')}</div><div className="d">规则</div></div>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="sec-label">告警降噪</div>
         <div className="kpi" style={{ marginBottom: 10 }}>
           <div className="v">{denoise}%</div>
@@ -58,6 +68,19 @@ export default function Dashboard() {
           <div className="frow"><div className="lbl">深度分析</div><div className="track"><div className="fill teal" style={{ width: `${Math.round(counts.reports / total * 100)}%` }} /></div><div className="count">{counts.reports}</div></div>
         </div>
         <p className="muted" style={{ marginTop: 10 }}>把 {counts.alerts} 条告警聚合为 {counts.cases} 个案件，仅 {counts.reports} 个需要深度分析。</p>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <div className="sec-label" style={{ marginBottom: 0 }}>流量趋势</div>
+          <div className="spacer" />
+          <div className="subnav">
+            {[['24h', '近24小时'], ['7d', '近7天'], ['30d', '近30天']].map(([r, label]) => (
+              <button key={r} className={trendRange === r ? 'active' : ''} onClick={() => setTrendRange(r)}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {trend && <TrendChart buckets={trend.buckets} />}
       </div>
       {showExport && <ExportReport onClose={() => setShowExport(false)} />}
     </div>

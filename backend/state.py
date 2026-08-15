@@ -233,7 +233,7 @@ SOURCES_PATH = Path(__file__).resolve().parent.parent / "prototype" / "syslog_so
 
 
 def get_sources_config() -> dict:
-    return _read(SOURCES_PATH, {"facility": {}, "hostname": {}, "tag": {}})
+    return _read(SOURCES_PATH, {"facility": {}, "hostname": {}, "tag": {}, "ip": {}})
 
 
 def set_sources_config(cfg: dict) -> dict:

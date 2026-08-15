@@ -38,7 +38,7 @@ export default function Triage({ onOpen }: { onOpen: (id: number) => void }) {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 5000);
+    const t = setInterval(refresh, 15000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, verdict, pending, page]);

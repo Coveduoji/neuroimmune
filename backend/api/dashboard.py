@@ -41,6 +41,14 @@ def dashboard():
     }
 
 
+@router.get("/trend")
+def trend(range: str = "24h"):
+    """告警流量趋势（时间桶序列）。range: 24h / 7d / 30d。"""
+    ranges = {"24h": (24, 3600), "7d": (168, 21600), "30d": (720, 86400)}
+    hours, bucket = ranges.get(range, ranges["24h"])
+    return {"range": range, "buckets": db.alert_trend(hours, bucket)}
+
+
 @router.get("/knob")
 def get_knob():
     knob = state.get_knob(state.get_knob_name())

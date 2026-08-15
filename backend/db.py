@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent / "neuroimmune.db"
@@ -513,6 +514,39 @@ def list_alerts_report(start=None, end=None, source=None, limit=100000):
 def set_case_reported_alerts(case_id: int, count: int) -> None:
     with _conn() as c:
         c.execute("UPDATE cases SET reported_at_alerts=? WHERE id=?", (count, case_id))
+
+
+def alert_trend(range_hours: int, bucket_seconds: int) -> list[dict]:
+    """告警流量时间序列：按时间桶统计 total（全部，含抑制）与 surfaced（上板）。
+
+    created_at 为 SQLite datetime('now')（UTC，YYYY-MM-DD HH:MM:SS），用 strftime('%s') 转
+    成 epoch 秒按桶聚合；缺口用零填充，返回完整连续序列。t 为桶起点 epoch 秒。
+    """
+    now = int(time.time())
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT strftime('%s', created_at) AS t, suppressed FROM alerts "
+            "WHERE created_at != '' AND created_at >= datetime('now', ?)",
+            (f"-{range_hours} hours",),
+        ).fetchall()
+
+    agg: dict[int, dict] = {}
+    for r in rows:
+        bucket = int(r["t"]) // bucket_seconds * bucket_seconds
+        d = agg.setdefault(bucket, {"total": 0, "surfaced": 0})
+        d["total"] += 1
+        if not r["suppressed"]:
+            d["surfaced"] += 1
+
+    out: list[dict] = []
+    nb = range_hours * 3600 // bucket_seconds  # 精确桶数（24h/时 → 24，7d/6h → 28，30d/日 → 30）
+    end_bucket = now // bucket_seconds * bucket_seconds
+    bucket = end_bucket - (nb - 1) * bucket_seconds
+    for _ in range(nb):
+        d = agg.get(bucket, {"total": 0, "surfaced": 0})
+        out.append({"t": bucket, "total": d["total"], "surfaced": d["surfaced"]})
+        bucket += bucket_seconds
+    return out
 
 
 # 案件状态机（对齐 agentic-soc 的合法转换）

@@ -68,6 +68,9 @@ export interface DashboardData {
   innate: string[];
 }
 
+export interface TrendBucket { t: number; total: number; surfaced: number; }
+export interface TrendData { range: string; buckets: TrendBucket[]; }
+
 export interface HippocampusNode {
   id: number;
   type: string;
@@ -160,6 +163,7 @@ export interface SourcesConfig {
   facility: Record<string, string>;
   hostname: Record<string, string>;
   tag: Record<string, string>;
+  ip: Record<string, string>;
 }
 
 export interface WebhookConfig {
