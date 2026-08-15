@@ -172,6 +172,53 @@ docker compose up -d --build
 - 安全底线：未设管理员凭据时后端**拒绝启动**；`/api/ingest` 未配 token 时**拒绝接入**；syslog 默认只绑 `127.0.0.1`。
 - 备份/恢复：`./scripts/backup.sh` / `./scripts/restore.sh <归档>`。
 
+### 纯内网离线部署
+
+纯内网无网络，需在**能上网的机器**上把所有依赖物化成镜像包，拷入内网 `docker load` 后直接跑：
+
+```bash
+# 上网机：构建 + 打包
+./scripts/offline_bundle.sh          # 产出 dist-offline/（镜像 tar.gz + compose + .env.example + 脚本）
+# 拷贝整个 dist-offline/ 目录进内网机
+
+# 内网机：加载 + 起
+gunzip -c neuroimmune-images-*.tar.gz | docker load
+cp .env.example .env                 # 填管理员密码 / API token
+docker compose up -d --no-build
+```
+
+- 内网要收 syslog：`.env` 里设 `NEUROIMMUNE_SYSLOG_BIND=0.0.0.0`，并在 `docker-compose.yml` 打开 5514 端口映射。
+- 内网机需先装好 Docker（`moby-engine docker-cli docker-compose`），离线装可从外网下 rpm 或走内网 yum 源。
+- 数据在命名卷 `neuroimmune-data`，用 `scripts/backup.sh` 定期备份。
+
+### 纯内网离线部署（无 Docker）
+
+不用 Docker 时，后端直接托管前端静态（同源，免 nginx），内网只需 Python 3.11 + 依赖 wheel + 源码 + dist：
+
+```bash
+# 上网机：打包（wheel + dist + 源码 + systemd 单元）
+./scripts/offline_bundle_no_docker.sh   # 产出 dist-offline-nodocker/
+
+# ---- 内网机 ----
+# 1) 拷目录到 /opt/neuroimmune（需先装 Python 3.11，离线）
+# 2) 建 venv 装依赖（离线 wheel）
+python3.11 -m venv /opt/neuroimmune/venv
+/opt/neuroimmune/venv/bin/pip install --no-index --find-links /opt/neuroimmune/wheels -r /opt/neuroimmune/backend/requirements.txt
+
+# 3) 建运行用户 + 环境变量
+useradd -r -m -d /var/lib/neuroimmune neuroimmune
+cp deploy/neuroimmune.env.example /etc/neuroimmune.env   # 填管理员密码/API token，chmod 600
+
+# 4) 装 systemd 单元并常驻
+cp deploy/neuroimmune.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now neuroimmune
+```
+
+- 访问 `http://<内网IP>:8000/`（后端同源托管前端 + API，无需 nginx）。
+- 打包脚本默认下 **Python 3.11 / linux x86_64** 的 wheel（`--platform manylinux2014_x86_64`，glibc≥2.17），与服务器不符时用 `PY_TARGET=` / `PLATFORM=` 覆盖。
+- 数据目录 `/var/lib/neuroimmune`（`NEUROIMMUNE_DATA_DIR`）需给 `neuroimmune` 用户写权限，并用 `scripts/backup.sh` 定期备份。
+- syslog 收内网日志：`/etc/neuroimmune.env` 里 `NEUROIMMUNE_SYSLOG_BIND=0.0.0.0`。
+
 ### 配置模型（可选）
 
 复制 `prototype/.env.example` 为 `prototype/.env` 并填入 key（`llm.py` 自动读取，无需 export）：

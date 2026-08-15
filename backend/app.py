@@ -14,6 +14,8 @@ if PROTO not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 import auth
@@ -79,9 +81,26 @@ def _consolidate_loop() -> None:
 threading.Thread(target=_consolidate_loop, daemon=True).start()
 
 
-@app.get("/")
-def root():
-    return {"service": "neuroimmune", "status": "ok", "counts": db.counts()}
+# 前端静态托管（无 nginx 的部署方式）：存在 frontend/dist 时，后端直接给 SPA（同源，免跨域/免反代）。
+# 用 NEUROIMMUNE_STATIC_DIR 指定产物目录；不存在时退回 JSON 横幅（纯 API 模式 / nginx 反代模式）。
+_STATIC_DIR = Path(os.environ.get(
+    "NEUROIMMUNE_STATIC_DIR",
+    str(Path(__file__).resolve().parent.parent / "frontend" / "dist"),
+))
+
+if _STATIC_DIR.is_dir():
+    _assets = _STATIC_DIR / "assets"
+    if _assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
+
+    @app.get("/")
+    def spa():
+        return FileResponse(str(_STATIC_DIR / "index.html"))
+else:
+
+    @app.get("/")
+    def root():
+        return {"service": "neuroimmune", "status": "ok", "counts": db.counts()}
 
 
 @app.get("/api/health")

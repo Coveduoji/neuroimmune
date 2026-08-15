@@ -29,6 +29,9 @@ logs/
 # === 备份归档 ===
 backups/
 
+# === 离线部署打包产物 ===
+dist-offline*/
+
 # === Python ===
 __pycache__/
 *.pyc
