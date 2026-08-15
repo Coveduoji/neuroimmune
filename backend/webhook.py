@@ -8,13 +8,11 @@ from __future__ import annotations
 import json
 import threading
 from datetime import datetime
-from pathlib import Path
 
 import httpx
 
 import db
-
-WEBHOOKS_PATH = Path(__file__).resolve().parent / "webhooks.json"
+from paths import WEBHOOKS_PATH
 
 # 可外发的全部字段（报告里的子字段用 "report.xxx" 点号路径单独选择）。
 ALL_FIELDS = [

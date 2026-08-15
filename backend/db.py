@@ -7,9 +7,8 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent / "neuroimmune.db"
+from paths import DB_PATH, FEEDBACK_PATH, MEMORY_PATH
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS alerts (
@@ -154,7 +153,7 @@ def count_admins() -> int:
 
 def append_feedback(record: dict) -> None:
     """处置理由作为学习素材：追加到 feedback.jsonl，供未来调查检索（RAG）。"""
-    p = Path(__file__).resolve().parent / "data" / "feedback.jsonl"
+    p = FEEDBACK_PATH
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -162,7 +161,7 @@ def append_feedback(record: dict) -> None:
 
 def get_feedback() -> list[dict]:
     """读全部处置反馈（误报经验）。"""
-    p = Path(__file__).resolve().parent / "data" / "feedback.jsonl"
+    p = FEEDBACK_PATH
     if not p.exists():
         return []
     out = []
@@ -174,8 +173,8 @@ def get_feedback() -> list[dict]:
 
 
 def get_memory() -> list[dict]:
-    """读睡眠巩固沉淀的历史记忆（prototype/data/memory.jsonl）。"""
-    p = Path(__file__).resolve().parent.parent / "prototype" / "data" / "memory.jsonl"
+    """读睡眠巩固沉淀的历史记忆（data_dir()/data/memory.jsonl）。"""
+    p = MEMORY_PATH
     if not p.exists():
         return []
     out = []

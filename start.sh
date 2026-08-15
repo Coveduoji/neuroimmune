@@ -45,7 +45,7 @@ if is_up "http://127.0.0.1:${BACKEND_PORT}/api/health"; then
   echo "[backend] :${BACKEND_PORT} 已在运行，复用。"
 else
   echo "[backend] 启动 uvicorn :${BACKEND_PORT} …"
-  (cd backend && exec python3 -m uvicorn app:app --port "$BACKEND_PORT") > "$LOG_DIR/backend.log" 2>&1 &
+  (cd backend && export NEUROIMMUNE_DEV=1 && exec python3 -m uvicorn app:app --port "$BACKEND_PORT") > "$LOG_DIR/backend.log" 2>&1 &
   STARTED_PIDS+=("$!")
 fi
 

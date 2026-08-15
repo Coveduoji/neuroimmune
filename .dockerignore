@@ -1,0 +1,35 @@
+# 构建上下文排除（防止密钥/运行时数据进镜像）
+.git
+.gitignore
+
+# 密钥 / 敏感信息
+.env
+**/.env
+backend/secret.key
+backend/*.json
+backend/*.db
+backend/*.sqlite
+backend/data/
+prototype/data/
+
+# 前端
+frontend/node_modules
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.venv/
+venv/
+
+# 运行日志 / 临时
+logs/
+*.log
+
+# 文档与资源（不进镜像）
+*.md
+architecture.png
+architecture.svg
+session-transcript-*.jsonl

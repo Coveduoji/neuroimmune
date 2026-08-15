@@ -5,7 +5,6 @@
 """
 from __future__ import annotations
 
-import os
 import queue
 import socket
 import sys
@@ -19,8 +18,11 @@ if PROTO not in sys.path:
 
 import syslog as syslog_parser
 
+import logging_setup
 import pipeline
 import state
+
+logger = logging_setup.get_logger("syslog")
 
 
 def _udp_loop(bind: str, port: int, q: queue.Queue, stop: threading.Event) -> None:
@@ -64,19 +66,39 @@ def _tcp_conn(conn: socket.socket, addr, q: queue.Queue, stop: threading.Event) 
 # 健康监控用的状态
 listening = False
 last_ingest = None  # 最近一次成功入库的时间戳
+_udp_thread: threading.Thread | None = None
+_tcp_thread: threading.Thread | None = None
+_worker_thread: threading.Thread | None = None
+
+
+def status() -> dict:
+    """供 /api/health 读取：反映线程真实存活，而非启动时只设一次的布尔。"""
+    alive = all(
+        t is not None and t.is_alive()
+        for t in (_udp_thread, _tcp_thread, _worker_thread)
+    )
+    return {
+        "listening": alive,
+        "udp_alive": _udp_thread is not None and _udp_thread.is_alive(),
+        "tcp_alive": _tcp_thread is not None and _tcp_thread.is_alive(),
+        "worker_alive": _worker_thread is not None and _worker_thread.is_alive(),
+        "last_ingest": last_ingest,
+    }
 
 
 def start(bind: str | None = None, port: int | None = None) -> None:
-    global listening
+    global listening, _udp_thread, _tcp_thread, _worker_thread
     # 接入配置（设置页可改）优先，环境变量 fallback。改 bind/port 需重启后端（socket 已绑定）。
     ingest = state.get_ingest_config()
-    bind = bind or ingest.get("syslog_bind") or os.environ.get("NEUROIMMUNE_SYSLOG_BIND", "0.0.0.0")
-    port = port or int(ingest.get("syslog_port") or os.environ.get("NEUROIMMUNE_SYSLOG_PORT", "5514"))
+    bind = bind or ingest.get("syslog_bind")
+    port = port or int(ingest.get("syslog_port"))
     q: queue.Queue = queue.Queue()
     stop = threading.Event()
 
-    threading.Thread(target=_udp_loop, args=(bind, port, q, stop), daemon=True).start()
-    threading.Thread(target=_tcp_loop, args=(bind, port, q, stop), daemon=True).start()
+    _udp_thread = threading.Thread(target=_udp_loop, args=(bind, port, q, stop), daemon=True)
+    _tcp_thread = threading.Thread(target=_tcp_loop, args=(bind, port, q, stop), daemon=True)
+    _udp_thread.start()
+    _tcp_thread.start()
 
     def worker() -> None:
         global last_ingest
@@ -91,9 +113,10 @@ def start(bind: str | None = None, port: int | None = None) -> None:
             try:
                 pipeline.process_signal(sig)
                 last_ingest = time.time()
-            except Exception as e:
-                print(f"[syslog] 处理失败: {e}")
+            except Exception:
+                logger.exception("syslog 信号处理失败")
 
-    threading.Thread(target=worker, daemon=True).start()
+    _worker_thread = threading.Thread(target=worker, daemon=True)
+    _worker_thread.start()
     listening = True
-    print(f"[syslog] 已监听 UDP/TCP {bind}:{port}，增量入库中")
+    logger.info("已监听 UDP/TCP %s:%s，增量入库中", bind, port)

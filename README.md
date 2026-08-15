@@ -160,6 +160,18 @@ cd backend && python3 -m uvicorn app:app --port 8000
 cd frontend && npm install && npm run dev
 ```
 
+### 容器化部署（生产推荐）
+
+```bash
+cp .env.example .env      # 填 NEUROIMMUNE_ADMIN_PASSWORD / NEUROIMMUNE_API_TOKEN
+docker compose up -d --build
+```
+
+- nginx 托管前端静态 + 反代 `/api`（默认 80 端口，HTTPS 见 `nginx.conf` 注释）。
+- 数据持久化在命名卷 `neuroimmune-data`（SQLite / JSON 状态 / `secret.key`）。
+- 安全底线：未设管理员凭据时后端**拒绝启动**；`/api/ingest` 未配 token 时**拒绝接入**；syslog 默认只绑 `127.0.0.1`。
+- 备份/恢复：`./scripts/backup.sh` / `./scripts/restore.sh <归档>`。
+
 ### 配置模型（可选）
 
 复制 `prototype/.env.example` 为 `prototype/.env` 并填入 key（`llm.py` 自动读取，无需 export）：

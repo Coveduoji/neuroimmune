@@ -1,35 +1,40 @@
 """鉴权：机器共享 token（写操作）+ 用户 JWT（登录后的人）。
 
-- `require_token`：可选的共享 token（X-API-Token），保护机器入库/清库等，默认不设不鉴权。
+- `require_token`：机器接入共享 token（X-API-Token），未配置则 fail-closed 拒绝。
 - 用户体系：用户名/密码 → bcrypt 哈希存 users 表；登录发 JWT（HS256，24h），`require_user`
   校验 Bearer token，`require_admin` 再加角色校验。
 - JWT 密钥：环境变量 NEUROIMMUNE_JWT_SECRET 优先；否则首次自动生成并持久化到 secret.key。
 """
 from __future__ import annotations
 
+import hmac
 import os
 import secrets
 import time
-from pathlib import Path
 
 import bcrypt
 import jwt as pyjwt
 from fastapi import Depends, Header, HTTPException
 
 import db
+import logging_setup
 import state
+from paths import SECRET_PATH
+
+logger = logging_setup.get_logger("auth")
 
 ALGORITHM = "HS256"
 TOKEN_TTL = 24 * 3600  # 24h
-SECRET_PATH = Path(__file__).resolve().parent / "secret.key"
 
 
 # ---- 机器共享 token（保留）----
 
 def require_token(x_api_token: str | None = Header(default=None)) -> None:
-    expected = state.get_ingest_config().get("api_token", "").strip() \
-        or os.environ.get("NEUROIMMUNE_API_TOKEN", "").strip()
-    if expected and x_api_token != expected:
+    expected = state.get_ingest_config().get("api_token", "").strip()
+    if not expected:
+        # fail-closed：没配 token 就拒绝机器接入，避免默认开放
+        raise HTTPException(503, "机器接入未启用：未配置 API token")
+    if not x_api_token or not hmac.compare_digest(x_api_token.encode(), expected.encode()):
         raise HTTPException(401, "invalid or missing API token")
 
 
@@ -121,7 +126,12 @@ def require_perm(perm: str):
 # ---- 初始管理员引导 ----
 
 def bootstrap_admin() -> None:
-    """启动时确保至少有一个 admin：env 优先，否则建默认 admin/admin（打警告）。"""
+    """启动时确保至少有一个 admin。
+
+    - 设了 NEUROIMMUNE_ADMIN_USER/PASSWORD → 用它建号（生产）。
+    - 设了 NEUROIMMUNE_DEV=1 → 建默认 admin/admin（仅本地开发）。
+    - 都没有 → 拒绝启动（fail-closed，避免默认弱口令上生产）。
+    """
     if db.count_admins() > 0:
         return
     env_user = os.environ.get("NEUROIMMUNE_ADMIN_USER", "").strip()
@@ -129,10 +139,15 @@ def bootstrap_admin() -> None:
     if env_user and env_pass:
         username, password = env_user, env_pass
         note = "来自环境变量"
-    else:
+    elif os.environ.get("NEUROIMMUNE_DEV", "").strip() == "1":
         username, password = "admin", "admin"
-        note = "默认账号，生产请设 NEUROIMMUNE_ADMIN_USER / NEUROIMMUNE_ADMIN_PASSWORD"
+        note = "开发模式默认账号（生产勿用）"
+    else:
+        raise RuntimeError(
+            "未配置管理员凭据：请设置 NEUROIMMUNE_ADMIN_USER / NEUROIMMUNE_ADMIN_PASSWORD，"
+            "或本地开发时设 NEUROIMMUNE_DEV=1。"
+        )
     if db.get_user_by_username(username):
         return
     db.create_user(username, hash_password(password), "admin")
-    print(f"[auth] 初始管理员已创建：{username}（{note}）")
+    logger.info("初始管理员已创建：%s（%s）", username, note)

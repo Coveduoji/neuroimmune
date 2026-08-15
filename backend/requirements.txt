@@ -1,11 +1,12 @@
-# Web 工作台后端依赖（Python 3.11+）
+# Web 工作台后端依赖（Python 3.11+，版本已锁定）
+# 完整传递依赖见 requirements.lock；上生产如需 hash 校验可用 `pip-compile --generate-hashes`。
 # 核心判断逻辑在 prototype/ 里，只额外依赖 httpx；后端本身是 FastAPI 薄壳。
-fastapi>=0.110
-uvicorn[standard]>=0.29
-pydantic>=2.6
-httpx>=0.27
-python-multipart>=0.0.9
-matplotlib>=3.8
-python-docx>=1.1
-PyJWT>=2.8
-bcrypt>=4.1
+fastapi==0.141.1
+uvicorn==0.52.3
+pydantic==2.13.4
+httpx==0.28.1
+python-multipart==0.0.32
+matplotlib==3.11.1
+python-docx==1.2.0
+PyJWT==2.13.0
+bcrypt==4.3.0

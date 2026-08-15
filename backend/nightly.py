@@ -21,8 +21,7 @@ from amygdala import _extract_json
 
 import db
 import state
-
-MEMORY_PATH = Path(__file__).resolve().parent.parent / "prototype" / "data" / "memory.jsonl"
+from paths import MEMORY_PATH
 
 CONSOLIDATE_SYSTEM = (
     "你是安全系统的「睡眠巩固」，负责夜里把一天的安全案件整合成记忆。"

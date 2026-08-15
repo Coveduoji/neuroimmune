@@ -16,8 +16,11 @@ from pathlib import Path
 import config
 import llm
 
-KNOB_PATH = Path(__file__).resolve().parent / "knob.json"
-PRESETS_PATH = Path(__file__).resolve().parent / "knob_presets.json"
+from paths import (
+    KNOB_PATH, PRESETS_PATH, FREQ_PATH, MODE_PATH, GATING_PATH,
+    MODEL_PATH, DETECTION_PATH, INGEST_PATH,
+)
+
 _DEFAULT = "正常"
 
 
@@ -65,9 +68,6 @@ def get_all_presets() -> dict:
             for name in config.PRESETS}
 
 
-FREQ_PATH = Path(__file__).resolve().parent / "freq.json"
-
-
 def get_freq_config() -> dict:
     """频率降级参数：时间窗(秒)/频次阈值/置信度折扣。"""
     return _read(FREQ_PATH, {"window": 3600, "threshold": 10, "demote": 0.4})
@@ -81,8 +81,6 @@ def set_freq_config(window: int, threshold: int, demote: float) -> None:
 
 
 # ---- 模型模式（mock / real / auto）+ 系统2 唤醒门槛 ----
-MODE_PATH = Path(__file__).resolve().parent / "mode.json"
-GATING_PATH = Path(__file__).resolve().parent / "gating.json"
 _MODES = ("auto", "mock", "real")
 
 
@@ -98,9 +96,6 @@ def set_model_mode(mode: str) -> None:
 
 
 # ---- 模型接入 / 检测调参 / 接入 配置（env 作为 fallback，UI 可改）----
-MODEL_PATH = Path(__file__).resolve().parent / "model.json"
-DETECTION_PATH = Path(__file__).resolve().parent / "detection.json"
-INGEST_PATH = Path(__file__).resolve().parent / "ingest.json"
 
 
 def get_model_config() -> dict:
@@ -147,11 +142,22 @@ def set_detection_config(cfg: dict) -> dict:
 
 
 def get_ingest_config() -> dict:
-    """接入：syslog bind/port、夜间巩固间隔（秒）、API token（空=免鉴权）。"""
-    return _read(INGEST_PATH, {
-        "syslog_bind": "0.0.0.0", "syslog_port": 5514,
-        "consolidate_interval": 21600, "api_token": "",
-    })
+    """接入：syslog bind/port、夜间巩固间隔（秒）、API token。
+
+    优先级：ingest.json（UI 显式值）> 环境变量 > 默认。
+    syslog bind 默认 127.0.0.1（仅本机收日志），要对外接收需显式设 0.0.0.0。
+    """
+    cfg = _read(INGEST_PATH, {})
+    return {
+        "syslog_bind": cfg.get("syslog_bind")
+        or os.environ.get("NEUROIMMUNE_SYSLOG_BIND", "").strip()
+        or "127.0.0.1",
+        "syslog_port": int(cfg.get("syslog_port")
+                           or os.environ.get("NEUROIMMUNE_SYSLOG_PORT", "5514")),
+        "consolidate_interval": int(cfg.get("consolidate_interval")
+                                    or os.environ.get("NEUROIMMUNE_CONSOLIDATE_INTERVAL", "21600")),
+        "api_token": cfg.get("api_token", "") or os.environ.get("NEUROIMMUNE_API_TOKEN", "").strip(),
+    }
 
 
 def set_ingest_config(cfg: dict) -> dict:
