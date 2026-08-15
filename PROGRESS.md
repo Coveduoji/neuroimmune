@@ -37,6 +37,7 @@
 - 前端 token 输入 UI（可选）。
 - 免疫签名相似度匹配（可选进阶：Jaccard/SimHash/embedding）。
 - 免疫签名掩码粒度可配。
+- **细粒度权限**：admin 可按用户配置权限（当前只有 admin/user 两级硬编码；见「权限方案」）。
 
 ## 暂缓（`prototype/ROADMAP.md` 三）
 
