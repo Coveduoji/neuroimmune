@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 560" role="img" aria-label="神经免疫降噪与聚合架构图">
+  <title>神经免疫 降噪与聚合架构图</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/>
+    </marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#0969da"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1240" height="560" fill="#ffffff"/>
+
+  <!-- 阶段标题 -->
+  <text x="30" y="54" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#57606a">输入</text>
+  <text x="300" y="54" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#57606a">降噪 · 顺序短路</text>
+  <text x="610" y="54" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#57606a">聚合 · 拼链</text>
+  <text x="920" y="54" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#57606a">认知 · 深想</text>
+
+  <!-- 阶段 1：输入 -->
+  <rect x="30" y="68" width="210" height="124" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="44" y="112" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#24292f">syslog UDP/TCP</text>
+  <text x="44" y="138" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#24292f">HTTP /api/ingest</text>
+
+  <!-- 阶段 2：降噪 -->
+  <rect x="300" y="68" width="250" height="124" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="314" y="92" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">免疫耐受</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">is_tolerated()</tspan></text>
+  <text x="314" y="114" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">固有免疫</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">innate.match()</tspan></text>
+  <text x="314" y="136" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">杏仁核</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">judge_signal()</tspan></text>
+  <text x="314" y="158" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">频率降级</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">count_historical_alerts()</tspan></text>
+  <text x="314" y="180" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">抑制</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">conf &lt; suppress_below</tspan></text>
+
+  <!-- 阶段 3：聚合 -->
+  <rect x="610" y="68" width="250" height="124" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="624" y="98" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">实体抽取</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">extract_entities()</tspan></text>
+  <text x="624" y="122" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">图 / 并查集</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">components()</tspan></text>
+  <text x="624" y="146" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">归案 / 合并</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">cases_for_entity()</tspan></text>
+  <text x="624" y="170" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">案件强度</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">max + chain_bonus</tspan></text>
+
+  <!-- 阶段 4：认知 -->
+  <rect x="920" y="68" width="250" height="124" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="934" y="104" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">唤醒门控</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">门槛 + 预算</tspan></text>
+  <text x="934" y="130" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">系统2</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">deep_analyze_chain()</tspan></text>
+  <text x="934" y="156" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11"><tspan fill="#24292f" font-weight="600">结构化报告</tspan><tspan fill="#6e7781" dx="6" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">verdict / evidence / iocs</tspan></text>
+
+  <!-- 主流程箭头 -->
+  <line x1="240" y1="130" x2="296" y2="130" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="268" y="120" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="10" fill="#57606a" text-anchor="middle">信号</text>
+  <line x1="550" y1="130" x2="606" y2="130" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="578" y="120" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="10" fill="#57606a" text-anchor="middle">上板</text>
+  <line x1="860" y1="130" x2="916" y2="130" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="888" y="120" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="10" fill="#57606a" text-anchor="middle">顶出</text>
+
+  <!-- 静默留痕 -->
+  <line x1="425" y1="192" x2="425" y2="246" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="437" y="225" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="10" fill="#cf222e">已知好 / 低置信度</text>
+  <rect x="300" y="250" width="250" height="54" rx="8" fill="#fff5f5" stroke="#cf222e" stroke-dasharray="5 4"/>
+  <text x="425" y="282" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#cf222e" text-anchor="middle" font-weight="600">静默留痕 · suppressed=1（可放回）</text>
+
+  <!-- 底部：记忆 / 反馈闭环 -->
+  <rect x="30" y="372" width="210" height="64" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="44" y="397" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#24292f" font-weight="600">分析师处置（读报告）</text>
+  <text x="44" y="421" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="9.5" fill="#6e7781">误报→白名单 · 真阳性→规则</text>
+
+  <rect x="610" y="372" width="150" height="64" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="624" y="397" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#24292f" font-weight="600">夜间巩固</text>
+  <text x="624" y="421" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="#6e7781">consolidate()</text>
+
+  <rect x="810" y="372" width="140" height="64" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="824" y="397" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#24292f" font-weight="600">记忆库</text>
+  <text x="824" y="421" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="#6e7781">memory.jsonl</text>
+
+  <rect x="1000" y="372" width="160" height="64" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="1014" y="397" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#24292f" font-weight="600">RAG 检索</text>
+  <text x="1014" y="421" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="#6e7781">_retrieve_knowledge()</text>
+
+  <!-- 记忆链箭头 -->
+  <line x1="760" y1="404" x2="806" y2="404" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="783" y="396" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="9.5" fill="#57606a" text-anchor="middle">蒸馏</text>
+  <line x1="950" y1="404" x2="996" y2="404" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 反馈箭头（蓝） -->
+  <line x1="135" y1="372" x2="350" y2="194" stroke="#0969da" stroke-width="1.5" marker-end="url(#arrB)"/>
+  <text x="118" y="303" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="10" fill="#0969da" text-anchor="end">回写免疫</text>
+  <line x1="1080" y1="372" x2="1080" y2="194" stroke="#0969da" stroke-width="1.5" marker-end="url(#arrB)"/>
+  <text x="1090" y="284" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="10" fill="#0969da">历史经验注入</text>
+</svg>
