@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { toast } from '../toast';
 import { navigate } from '../nav';
-import type { CaseDetail as CaseDetailData, GraphData, Case } from '../types';
+import type { CaseDetail as CaseDetailData, GraphData, Case, Alert } from '../types';
 import GraphView from '../components/GraphView';
 import ReportView from '../components/ReportView';
 
@@ -13,9 +13,13 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
   const [busy, setBusy] = useState(false);
   const [related, setRelated] = useState<Case[] | null>(null);
   const [note, setNote] = useState('');
+  const [selectedAlert, setSelectedAlert] = useState<number | null>(null);
+  const [selectedEntity, setSelectedEntity] = useState<{ type: string; value: string } | null>(null);
 
   useEffect(() => {
     setRelated(null);
+    setSelectedAlert(null);
+    setSelectedEntity(null);
     api.getCase(id).then(setData);
     api.caseHippocampus(id).then(setGraph);
   }, [id]);
@@ -58,6 +62,8 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
 
   const onNodeTap = (type: string, value: string) => {
     api.entityCases(type, value).then(setRelated);
+    setSelectedEntity((cur) => (cur && cur.type === type && cur.value === value ? null : { type, value }));
+    setSelectedAlert(null);
   };
 
   const pushCase = async () => {
@@ -76,6 +82,15 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
   if (!data) return <div className="page empty">加载中…</div>;
 
   const { case: c, alerts, report } = data;
+  const selected = alerts.find((a) => a.id === selectedAlert);
+  const highlight = selected?.artifacts ?? (selectedEntity ? [selectedEntity] : undefined);
+  const isAlertHighlighted = (a: Alert) =>
+    a.id === selectedAlert ||
+    (selectedEntity != null && a.artifacts.some((art) => art.type === selectedEntity.type && art.value === selectedEntity.value));
+  const toggleSelect = (alertId: number) => {
+    setSelectedAlert((cur) => (cur === alertId ? null : alertId));
+    setSelectedEntity(null);
+  };
 
   return (
     <div className="page">
@@ -92,7 +107,11 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
           <div className="chain">
             {alerts.map((a, i) => (
               <div key={a.id} className="chain-step">
-                <div className="chain-node">
+                <div
+                  className={`chain-node${isAlertHighlighted(a) ? ' sel' : ''}`}
+                  onClick={() => toggleSelect(a.id)}
+                  title="点击在实体图中高亮对应实体"
+                >
                   <div className="chain-time">{a.time}</div>
                   <div className="chain-type">{a.source}/{a.type}</div>
                   <div className="chain-asset">{a.asset}</div>
@@ -109,7 +128,13 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
         <div className="card">
           <h3 style={{ marginTop: 0 }}>告警时间线</h3>
           {alerts.map((a) => (
-            <div className="alert-item" key={a.id}>
+            <div
+              className={`alert-item tl-alert${isAlertHighlighted(a) ? ' sel' : ''}`}
+              key={a.id}
+              style={{ cursor: 'pointer' }}
+              onClick={() => toggleSelect(a.id)}
+              title="点击在实体图中高亮对应实体"
+            >
               <div className="meta">
                 [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2)}
                 {a.innate ? ' · 固有免疫秒拦' : ''}
@@ -117,8 +142,8 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
               </div>
               <div className="raw">{a.raw}</div>
               <div style={{ marginTop: 4, display: 'flex', gap: 6 }}>
-                <button className="btn" disabled={busy} onClick={() => markAlert(a.id, 'False Positive')}>误报</button>
-                <button className="btn" disabled={busy} onClick={() => markAlert(a.id, 'True Positive')}>真阳性</button>
+                <button className="btn" disabled={busy} onClick={(e) => { e.stopPropagation(); markAlert(a.id, 'False Positive'); }}>误报</button>
+                <button className="btn" disabled={busy} onClick={(e) => { e.stopPropagation(); markAlert(a.id, 'True Positive'); }}>真阳性</button>
               </div>
             </div>
           ))}
@@ -126,13 +151,13 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
 
         <div className="card">
           <h3 style={{ marginTop: 0 }}>实体图</h3>
-          {graph ? <GraphView graph={graph} onNodeTap={onNodeTap} /> : <div className="empty">加载中…</div>}
+          {graph ? <GraphView graph={graph} onNodeTap={onNodeTap} highlight={highlight} /> : <div className="empty">加载中…</div>}
           <div className="chips" style={{ marginTop: 8 }}>
             {c.entities.map((e, i) => (
               <span key={i} className="chip">{e.type}:{e.value}</span>
             ))}
           </div>
-          <div className="muted" style={{ marginTop: 8 }}>点实体反查关联案件</div>
+          <div className="muted" style={{ marginTop: 8 }}>点实体高亮相关告警并反查关联案件</div>
           {related !== null && (
             <div style={{ marginTop: 8 }}>
               <div className="muted">关联案件（{related.length}）</div>
