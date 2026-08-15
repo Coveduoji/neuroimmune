@@ -7,17 +7,19 @@ from datetime import datetime
 import os
 import tempfile
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 
 import auth
 import config
 import db
 import innate
 import pipeline
+import report
 import signals
 import state
 import syslog_server
 import tolerance
+import webhook
 from signature import signature
 from schemas import KnobSet, IngestRequest
 
@@ -348,6 +350,70 @@ def get_sources():
 @router.put("/sources", dependencies=[Depends(auth.require_token)])
 def set_sources(body: dict):
     return state.set_sources_config(body)
+
+
+@router.post("/report/export")
+def export_report(body: dict):
+    """按筛选条件导出报告（docx / md / html）。body: {format, start, end, source, verdict, status}。"""
+    body = body or {}
+    fmt = body.get("format", "html")
+    filters = {k: v for k, v in body.items() if k != "format" and v not in ("", None)}
+    try:
+        media, ext, content = report.export_report(filters, fmt)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    filename = f"neuroimmune-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.{ext}"
+    return Response(content, media_type=media,
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@router.get("/webhooks")
+def list_webhooks():
+    return {"items": webhook.load_webhooks()}
+
+
+@router.post("/webhooks", dependencies=[Depends(auth.require_token)])
+def add_webhook(body: dict):
+    wbs = webhook.load_webhooks()
+    wbs.append({
+        "name": (body or {}).get("name", "webhook"),
+        "url": (body or {}).get("url", ""),
+        "token": (body or {}).get("token", ""),
+        "trigger": (body or {}).get("trigger", "escalated"),
+        "enabled": (body or {}).get("enabled", True),
+    })
+    webhook.save_webhooks(wbs)
+    return {"items": wbs}
+
+
+@router.put("/webhooks/{index}", dependencies=[Depends(auth.require_token)])
+def update_webhook(index: int, body: dict):
+    wbs = webhook.load_webhooks()
+    if not (0 <= index < len(wbs)):
+        raise HTTPException(404, "webhook 不存在")
+    for k in ("name", "url", "token", "trigger", "enabled"):
+        if k in (body or {}):
+            wbs[index][k] = body[k]
+    webhook.save_webhooks(wbs)
+    return {"items": wbs}
+
+
+@router.delete("/webhooks/{index}", dependencies=[Depends(auth.require_token)])
+def delete_webhook(index: int):
+    wbs = webhook.load_webhooks()
+    if not (0 <= index < len(wbs)):
+        raise HTTPException(404, "webhook 不存在")
+    wbs.pop(index)
+    webhook.save_webhooks(wbs)
+    return {"items": wbs}
+
+
+@router.post("/webhooks/{index}/test", dependencies=[Depends(auth.require_token)])
+def test_webhook(index: int):
+    wbs = webhook.load_webhooks()
+    if not (0 <= index < len(wbs)):
+        raise HTTPException(404, "webhook 不存在")
+    return {"ok": webhook.test_webhook(wbs[index])}
 
 
 @router.put("/presets/{name}", dependencies=[Depends(auth.require_token)])

@@ -56,6 +56,19 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
     api.entityCases(type, value).then(setRelated);
   };
 
+  const pushCase = async () => {
+    setBusy(true);
+    try {
+      const r = await api.pushCase(id);
+      const ok = r.results.filter((x) => x.ok).length;
+      toast(`外发完成：${ok}/${r.results.length} 个目标成功`);
+    } catch (e) {
+      toast('外发失败：' + (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!data) return <div className="page empty">加载中…</div>;
 
   const { case: c, alerts, report } = data;
@@ -147,6 +160,7 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
         <button className="btn" disabled={busy} onClick={() => patch({ status: 'Closed' })}>关闭案件</button>
         <button className="btn danger" disabled={busy} onClick={markFP}>标记误报</button>
         <button className="btn" disabled={busy} onClick={markTP}>标记真阳性</button>
+        <button className="btn" disabled={busy} onClick={pushCase}>外发</button>
         <button className="btn" onClick={() => window.open(`/api/cases/${id}/export`)}>导出报告</button>
       </div>
     </div>

@@ -27,6 +27,7 @@ import tolerance
 
 import db
 import state
+import webhook
 
 
 # ---- 系统2 唤醒预算（滑动窗口计数）----
@@ -69,6 +70,7 @@ def _run_system2(case_id: int, events, deep_client, knowledge) -> None:
     """后台跑系统2，per-case 串行，不阻塞入库。"""
     with _case_lock(case_id):
         db.insert_report(case_id, system2.deep_analyze_chain(events, deep_client, knowledge))
+    webhook.notify("escalated", case_id)  # 深析报告就绪后外发
 
 
 def process(signals: list[dict], knob_name: str = "正常") -> dict:
@@ -149,6 +151,7 @@ def process(signals: list[dict], knob_name: str = "正常") -> dict:
             knowledge = _retrieve_knowledge([g.entities[i].value for i in comps[cid]], d["rag_limit"])
             report = system2.deep_analyze_chain([events[i] for i in idxs], deep_client, knowledge)
             db.insert_report(case_id, report)
+            webhook.notify("escalated", case_id)
         case_summaries.append({
             "id": case_id, "correlation_uid": uid, "strength": round(strength(idxs), 3),
             "alerts": len(idxs), "escalated": cid in escalated_cids,

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { toast } from '../toast';
 import AdvancedSettings from './AdvancedSettings';
 import { useTerms } from '../terms';
+import type { WebhookConfig } from '../types';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
 
@@ -13,6 +14,10 @@ export default function Settings() {
   const [info, setInfo] = useState<{ syslog: { bind: string; port: number }; model: string; deep_model: string } | null>(null);
   const [health, setHealth] = useState<any>(null);
   const [mode, setModeState] = useState<string | null>(null);
+  const [webhooks, setWebhooks] = useState<WebhookConfig[] | null>(null);
+  const [whName, setWhName] = useState('');
+  const [whUrl, setWhUrl] = useState('');
+  const [whTrigger, setWhTrigger] = useState('escalated');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
@@ -20,6 +25,7 @@ export default function Settings() {
     api.info().then(setInfo);
     api.health().then(setHealth);
     api.mode().then((m) => setModeState(m.mode));
+    api.webhooks().then((r) => setWebhooks(r.items));
   };
   useEffect(load, []);
 
@@ -51,6 +57,16 @@ export default function Settings() {
     toast(r.memory ? `已巩固记忆：${r.memory.slice(0, 40)}…` : '巩固完成（无数据）');
     load();
   };
+
+  const addWebhook = async () => {
+    if (!whUrl) { toast('请填 URL'); return; }
+    await api.addWebhook({ name: whName || 'webhook', url: whUrl, trigger: whTrigger, token: '', enabled: true });
+    toast('已添加外发目标');
+    setWhName(''); setWhUrl(''); setWhTrigger('escalated');
+    load();
+  };
+  const removeWebhook = async (i: number) => { await api.deleteWebhook(i); load(); };
+  const testWebhook = async (i: number) => { const r = await api.testWebhook(i); toast(r.ok ? '测试成功' : '测试失败'); };
 
   if (tab === 'advanced') return <AdvancedSettings onBack={goBasic} />;
 
@@ -103,6 +119,33 @@ export default function Settings() {
             <button className="btn primary" onClick={() => fileRef.current?.click()}>上传告警文件（JSONL/JSON/CSV）</button>
           </div>
           <p className="muted" style={{ marginTop: 10 }}>也可以把 rsyslog / 网络设备转发到上面的 syslog 端口，实时接入。</p>
+        </div>
+
+        <div className="card">
+          <div className="sec-label">案件外发（Webhook）</div>
+          <p className="muted">案件顶出深析后自动 POST 到这些地址，供 SOAR / SIEM / 工单 / 通知等下游消费。</p>
+          {(webhooks ?? []).map((w, i) => (
+            <div key={i} className="alert-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <code style={{ wordBreak: 'break-all' }}>{w.name} → {w.url}</code>
+                <span className="tag" style={{ marginLeft: 8 }}>{w.trigger === 'escalated' ? '顶出即推' : w.trigger === 'all' ? '全部' : '仅手动'}</span>
+              </div>
+              <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => testWebhook(i)}>测试</button>
+              <button className="chip-x" title="删除" onClick={() => removeWebhook(i)}>×</button>
+            </div>
+          ))}
+          <div className="field-row" style={{ marginTop: 10 }}>
+            <label className="field"><span>名称</span><input value={whName} onChange={(e) => setWhName(e.target.value)} /></label>
+            <label className="field"><span>URL</span><input value={whUrl} placeholder="http://…" onChange={(e) => setWhUrl(e.target.value)} /></label>
+            <label className="field"><span>触发</span>
+              <select value={whTrigger} onChange={(e) => setWhTrigger(e.target.value)}>
+                <option value="escalated">顶出即推</option>
+                <option value="all">全部</option>
+                <option value="manual">仅手动</option>
+              </select>
+            </label>
+            <button className="btn primary" onClick={addWebhook}>添加</button>
+          </div>
         </div>
 
         <div className="card">

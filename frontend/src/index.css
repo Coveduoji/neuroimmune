@@ -194,6 +194,13 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .chain-asset { font-size: 11.5px; color: var(--ink-2); word-break: break-all; }
 .chain-conf { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; }
 .chain-arrow { color: var(--muted); font-size: 16px; margin: 0 2px; flex-shrink: 0; }
+
+/* ---- 弹窗 ---- */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: var(--surface); border-radius: 12px; box-shadow: var(--shadow-lg); width: min(560px, 92vw); max-height: 90vh; overflow-y: auto; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--hairline); }
+.modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--hairline); }
 .alert-item { padding: 9px 0; border-bottom: 1px solid var(--hairline); }
 .alert-item:last-child { border-bottom: none; }
 .alert-item .meta { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }

@@ -10,6 +10,7 @@ import auth
 import db
 import innate
 import tolerance
+import webhook
 from signature import signature
 from schemas import CasePatch
 
@@ -115,6 +116,7 @@ def false_positive(case_id: int, body: dict | None = None):
         "reason": reason,
         "time": datetime.now().isoformat(),
     })
+    webhook.notify("disposition", case_id)
     return {"case_id": case_id, "learned": learned}
 
 
@@ -140,7 +142,16 @@ def true_positive(case_id: int, body: dict | None = None):
         "reason": reason,
         "time": datetime.now().isoformat(),
     })
+    webhook.notify("disposition", case_id)
     return {"case_id": case_id, "learned": learned}
+
+
+@router.post("/{case_id}/push", dependencies=[Depends(auth.require_token)])
+def push_case(case_id: int):
+    """手动外发一个案件到所有 enabled webhook。"""
+    if not db.get_case(case_id):
+        raise HTTPException(404, "case not found")
+    return {"case_id": case_id, "results": webhook.push_case(case_id)}
 
 
 def _case_markdown(case: dict, alerts: list[dict], report: dict | None) -> str:

@@ -488,6 +488,28 @@ def count_all_alerts(source=None, suppressed=None, q=None) -> int:
         return c.execute(f"SELECT COUNT(*) AS c FROM alerts a{wq}", args).fetchone()["c"]
 
 
+def list_alerts_report(start=None, end=None, source=None, limit=100000):
+    """报告用：按 created_at 时间范围（含边界）+ 来源查告警，带案件 uid。
+
+    start/end 为 "YYYY-MM-DD HH:MM:SS" 字符串，可为空（= 不限）。
+    """
+    wq = " WHERE 1=1"
+    args = []
+    if start:
+        wq += " AND a.created_at >= ?"
+        args.append(start)
+    if end:
+        wq += " AND a.created_at <= ?"
+        args.append(end)
+    if source:
+        wq += " AND a.source=?"
+        args.append(source)
+    sql = (f"SELECT a.*, c.correlation_uid AS case_uid FROM alerts a "
+           f"LEFT JOIN cases c ON c.id = a.case_id{wq} ORDER BY a.id DESC LIMIT ?")
+    with _conn() as c:
+        return [dict(r) for r in c.execute(sql, args + [limit]).fetchall()]
+
+
 def set_case_reported_alerts(case_id: int, count: int) -> None:
     with _conn() as c:
         c.execute("UPDATE cases SET reported_at_alerts=? WHERE id=?", (count, case_id))

@@ -80,4 +80,32 @@ export const api = {
     fd.append('file', file);
     return j<{ ingested: number }>('/ingest/upload', { method: 'POST', body: fd });
   },
+  webhooks: () => j<{ items: import('../types').WebhookConfig[] }>('/webhooks'),
+  addWebhook: (body: object) =>
+    j<{ items: import('../types').WebhookConfig[] }>(`/webhooks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  updateWebhook: (index: number, body: object) =>
+    j<{ items: import('../types').WebhookConfig[] }>(`/webhooks/${index}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  deleteWebhook: (index: number) =>
+    j<{ items: import('../types').WebhookConfig[] }>(`/webhooks/${index}`, { method: 'DELETE' }),
+  testWebhook: (index: number) => j<{ ok: boolean }>(`/webhooks/${index}/test`, { method: 'POST' }),
+  pushCase: (id: number) =>
+    j<{ case_id: number; results: { name: string; url: string; ok: boolean }[] }>(`/cases/${id}/push`, { method: 'POST' }),
+  exportReport: async (body: object) => {
+    const r = await fetch(BASE + '/report/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token() ? { 'X-API-Token': token() } : {}) },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const blob = await r.blob();
+    const disp = r.headers.get('Content-Disposition') || '';
+    const m = disp.match(/filename="?([^";]+)"?/);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = m ? m[1] : 'report';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  },
 };

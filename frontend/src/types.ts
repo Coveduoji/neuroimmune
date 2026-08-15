@@ -161,3 +161,11 @@ export interface SourcesConfig {
   hostname: Record<string, string>;
   tag: Record<string, string>;
 }
+
+export interface WebhookConfig {
+  name: string;
+  url: string;
+  token: string;
+  trigger: string;
+  enabled: boolean;
+}

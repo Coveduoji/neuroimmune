@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { navigate } from '../nav';
 import { useTerms } from '../terms';
+import ExportReport from '../components/ExportReport';
 import type { DashboardData } from '../types';
 
 export default function Dashboard() {
   const { t } = useTerms();
   const [d, setD] = useState<DashboardData | null>(null);
+  const [showExport, setShowExport] = useState(false);
 
   useEffect(() => {
     const load = () => { api.dashboard().then(setD); };
@@ -23,7 +25,11 @@ export default function Dashboard() {
 
   return (
     <div className="page">
-      <div className="page-head"><h2>{t('dashboard')}</h2></div>
+      <div className="page-head">
+        <h2>{t('dashboard')}</h2>
+        <div className="spacer" />
+        <button className="btn primary" onClick={() => setShowExport(true)}>导出报告</button>
+      </div>
 
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.cases}</div><div className="k">案件</div><div className="d">已归案</div></div>
@@ -53,6 +59,7 @@ export default function Dashboard() {
         </div>
         <p className="muted" style={{ marginTop: 10 }}>把 {counts.alerts} 条告警聚合为 {counts.cases} 个案件，仅 {counts.reports} 个需要深度分析。</p>
       </div>
+      {showExport && <ExportReport onClose={() => setShowExport(false)} />}
     </div>
   );
 }
