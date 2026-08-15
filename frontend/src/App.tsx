@@ -6,11 +6,14 @@ import Hippocampus from './pages/Hippocampus';
 import Settings from './pages/Settings';
 import Thalamus from './pages/Thalamus';
 import Immune from './pages/Immune';
-import { api } from './api/client';
+import Users from './pages/Users';
+import Login from './pages/Login';
+import { api, getToken, clearToken, setUnauthorizedHandler } from './api/client';
 import { navigate, setNavListener, type View } from './nav';
 import { useTerms } from './terms';
+import type { AuthUser } from './types';
 
-const VIEWS: readonly View[] = ['dashboard', 'hippocampus', 'triage', 'thalamus', 'immune', 'settings'];
+const VIEWS: readonly View[] = ['dashboard', 'hippocampus', 'triage', 'thalamus', 'immune', 'settings', 'users'];
 
 // hash 路由：#/view 或 #/view/case/<id>，刷新/前进后退后保持当前界面
 function parseHash(): { view: View; caseId: number | null } {
@@ -34,6 +37,19 @@ export default function App() {
   const [view, setView] = useState<View>(() => parseHash().view);
   const [caseId, setCaseId] = useState<number | null>(() => parseHash().caseId);
   const [health, setHealth] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  // 鉴权：有 token 就校验，无效/过期退回登录；401 全局钩子清登录态
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    if (getToken()) {
+      api.me().then(setUser).catch(() => { clearToken(); setUser(null); }).finally(() => setAuthReady(true));
+    } else {
+      setAuthReady(true);
+    }
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     const f = () => api.health().then(setHealth).catch(() => {});
@@ -75,6 +91,11 @@ export default function App() {
 
   const go = (v: View) => { setCaseId(null); setView(v); };
 
+  const logout = () => { clearToken(); setUser(null); };
+
+  if (!authReady) return <div className="page empty">加载中…</div>;
+  if (!user) return <Login onLogin={setUser} />;
+
   return (
     <div className="app">
       <header className="topbar">
@@ -86,8 +107,11 @@ export default function App() {
           <button className={view === 'thalamus' ? 'active' : ''} onClick={() => go('thalamus')}>{t('thalamus')}</button>
           <button className={view === 'immune' ? 'active' : ''} onClick={() => go('immune')}>{t('immune')}</button>
           <button className={view === 'settings' ? 'active' : ''} onClick={() => go('settings')}>{t('settings')}</button>
+          <button className={view === 'users' ? 'active' : ''} onClick={() => go('users')}>用户</button>
         </nav>
         <div className="spacer" />
+        <span className="muted" style={{ marginRight: 8, fontSize: 13 }}>{user.username}{user.role === 'admin' ? ' · 管理员' : ''}</span>
+        <button className="btn" onClick={logout} style={{ marginRight: 14 }}>退出</button>
         {health && (
           <div className="status-bar">
             <div className="status-item">
@@ -108,7 +132,8 @@ export default function App() {
           <div style={{ display: view === 'dashboard' ? 'block' : 'none' }}><Dashboard /></div>
           <div style={{ display: view === 'thalamus' ? 'block' : 'none' }}><Thalamus /></div>
           <div style={{ display: view === 'immune' ? 'block' : 'none' }}><Immune /></div>
-          <div style={{ display: view === 'settings' ? 'block' : 'none' }}><Settings /></div>
+          <div style={{ display: view === 'settings' ? 'block' : 'none' }}><Settings user={user} /></div>
+          <div style={{ display: view === 'users' ? 'block' : 'none' }}><Users me={user} /></div>
         </>
       )}
     </div>

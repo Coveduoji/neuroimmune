@@ -188,7 +188,7 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
         <button className="btn" disabled={!verdict || busy} onClick={saveVerdict}>保存结论</button>
         <button className="btn" disabled={busy} onClick={() => patch({ status: 'Closed' })}>关闭案件</button>
         <button className="btn" disabled={busy} onClick={pushCase}>外发</button>
-        <button className="btn" onClick={() => window.open(`/api/cases/${id}/export`)}>导出报告</button>
+        <button className="btn" onClick={() => api.exportCase(id).catch((e) => toast((e as Error).message))}>导出报告</button>
       </div>
     </div>
   );

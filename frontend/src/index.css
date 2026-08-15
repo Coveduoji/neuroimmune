@@ -154,11 +154,22 @@ h1, h2, h3, h4 { font-weight: 650; letter-spacing: -0.01em; }
 .btn.primary:hover { background: var(--accent-strong); }
 .btn.danger { border-color: var(--critical); color: var(--critical); background: transparent; }
 .btn.danger:hover { background: var(--critical-soft); }
-input[type="number"], input[type="text"], select {
+input[type="number"], input[type="text"], input[type="password"], select {
   padding: 6px 10px; border: 1px solid var(--hairline); border-radius: 8px;
   background: var(--surface); color: var(--ink); font-size: 13px;
 }
 input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---- 登录 ---- */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; background: var(--bg); }
+.login-card {
+  width: min(360px, 92vw); background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 12px; box-shadow: var(--shadow-lg); padding: 28px 26px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.login-brand { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.login-card input { width: 100%; }
+.login-err { color: var(--critical); font-size: 13px; }
 
 /* ---- 设置：子导航 + 表单 ---- */
 .subnav { display: flex; gap: 2px; background: var(--bg-2); border-radius: 10px; padding: 3px; }

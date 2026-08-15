@@ -17,13 +17,12 @@ import pipeline
 import report
 import signals
 import state
-import syslog_server
 import tolerance
 import webhook
 from signature import signature
-from schemas import KnobSet, IngestRequest
+from schemas import KnobSet
 
-router = APIRouter(prefix="/api", tags=["dashboard"])
+router = APIRouter(prefix="/api", tags=["dashboard"], dependencies=[Depends(auth.require_user)])
 
 
 @router.get("/dashboard")
@@ -56,7 +55,7 @@ def get_knob():
             "escalate_above": knob.escalate_above, "budget": knob.budget}
 
 
-@router.put("/knob", dependencies=[Depends(auth.require_token)])
+@router.put("/knob", dependencies=[Depends(auth.require_perm("config"))])
 def set_knob(body: KnobSet):
     if body.knob not in config.PRESETS:
         return {"error": f"未知档位 {body.knob}"}
@@ -70,7 +69,7 @@ def suppressed():
     return db.list_suppressed_alerts()
 
 
-@router.post("/tolerance/remove", dependencies=[Depends(auth.require_token)])
+@router.post("/tolerance/remove", dependencies=[Depends(auth.require_perm("triage"))])
 def tolerance_remove(body: dict):
     """从免疫耐受白名单删一条签名。"""
     tol = tolerance.load_tolerance()
@@ -79,13 +78,13 @@ def tolerance_remove(body: dict):
     return {"remaining": sorted(tol)}
 
 
-@router.post("/tolerance/clear", dependencies=[Depends(auth.require_token)])
+@router.post("/tolerance/clear", dependencies=[Depends(auth.require_perm("triage"))])
 def tolerance_clear():
     tolerance.save_tolerance(set())
     return {"remaining": []}
 
 
-@router.post("/innate/remove", dependencies=[Depends(auth.require_token)])
+@router.post("/innate/remove", dependencies=[Depends(auth.require_perm("triage"))])
 def innate_remove(body: dict):
     """从固有免疫规则删一条签名。"""
     rules = innate.load_rules()
@@ -94,7 +93,7 @@ def innate_remove(body: dict):
     return {"remaining": sorted(rules)}
 
 
-@router.post("/innate/clear", dependencies=[Depends(auth.require_token)])
+@router.post("/innate/clear", dependencies=[Depends(auth.require_perm("triage"))])
 def innate_clear():
     innate.save_rules(set())
     return {"remaining": []}
@@ -115,7 +114,7 @@ def list_audit(action: str | None = None, limit: int = 200):
     return {"items": db.list_audit(action)[:limit]}
 
 
-@router.post("/suppressed/{alert_id}/restore", dependencies=[Depends(auth.require_token)])
+@router.post("/suppressed/{alert_id}/restore", dependencies=[Depends(auth.require_perm("triage"))])
 def restore(alert_id: int):
     """把一条被误压的告警放回：重新上板、归案、触发深度分析。"""
     alert = db.get_alert(alert_id)
@@ -130,7 +129,7 @@ def restore(alert_id: int):
     return result
 
 
-@router.post("/alerts/{alert_id}/disposition", dependencies=[Depends(auth.require_token)])
+@router.post("/alerts/{alert_id}/disposition", dependencies=[Depends(auth.require_perm("triage"))])
 def alert_disposition(alert_id: int, body: dict | None = None):
     """对单条告警标记误报/真阳性，回写对应规则（比整案一刀切更细粒度）。"""
     alert = db.get_alert(alert_id)
@@ -224,21 +223,14 @@ def global_graph():
     }
 
 
-@router.post("/ingest", dependencies=[Depends(auth.require_token)])
-def ingest(body: IngestRequest):
-    """增量入库：不重置，逐条归入/合并案件（24h 流式）。走全局旋钮。"""
-    results = [pipeline.process_signal(sig) for sig in body.signals]
-    return {"ingested": len(results), "results": results}
-
-
-@router.post("/reset", dependencies=[Depends(auth.require_token)])
+@router.post("/reset", dependencies=[Depends(auth.require_perm("maintenance"))])
 def reset():
     """手动清库（重新开始）。"""
     db.reset()
     return {"status": "reset"}
 
 
-@router.post("/consolidate", dependencies=[Depends(auth.require_token)])
+@router.post("/consolidate", dependencies=[Depends(auth.require_perm("maintenance"))])
 def consolidate_now():
     """手动触发夜间巩固（睡眠巩固：SQLite → 记忆 + 固有免疫规则）。"""
     import nightly
@@ -255,7 +247,7 @@ def get_freq():
     return state.get_freq_config()
 
 
-@router.put("/freq", dependencies=[Depends(auth.require_token)])
+@router.put("/freq", dependencies=[Depends(auth.require_perm("config"))])
 def set_freq(body: dict):
     cfg = state.get_freq_config()
     state.set_freq_config(
@@ -271,7 +263,7 @@ def get_mode():
     return {"mode": state.get_model_mode()}
 
 
-@router.put("/mode", dependencies=[Depends(auth.require_token)])
+@router.put("/mode", dependencies=[Depends(auth.require_perm("config"))])
 def set_mode(body: dict):
     mode = (body or {}).get("mode", "")
     if mode not in ("auto", "mock", "real"):
@@ -285,7 +277,7 @@ def get_gating():
     return state.get_gating_config()
 
 
-@router.put("/gating", dependencies=[Depends(auth.require_token)])
+@router.put("/gating", dependencies=[Depends(auth.require_perm("config"))])
 def set_gating(body: dict):
     cfg = state.get_gating_config()
     state.set_gating_config(
@@ -307,7 +299,7 @@ def get_model():
     return {**m, "api_key": _mask(m["api_key"]), "deep_api_key": _mask(m["deep_api_key"])}
 
 
-@router.put("/model", dependencies=[Depends(auth.require_token)])
+@router.put("/model", dependencies=[Depends(auth.require_perm("config"))])
 def set_model(body: dict):
     m = state.get_model_config()
     # key 掩码或空 = 不覆盖；给新值才更新
@@ -327,7 +319,7 @@ def get_detection():
     return state.get_detection_config()
 
 
-@router.put("/detection", dependencies=[Depends(auth.require_token)])
+@router.put("/detection", dependencies=[Depends(auth.require_perm("config"))])
 def set_detection(body: dict):
     return state.set_detection_config(body)
 
@@ -338,7 +330,7 @@ def get_ingest():
     return {**ing, "api_token": _mask(ing["api_token"])}
 
 
-@router.put("/ingest", dependencies=[Depends(auth.require_token)])
+@router.put("/ingest", dependencies=[Depends(auth.require_perm("config"))])
 def set_ingest(body: dict):
     ing = state.get_ingest_config()
     if body.get("api_token") and not str(body["api_token"]).startswith("••••"):
@@ -355,7 +347,7 @@ def get_sources():
     return state.get_sources_config()
 
 
-@router.put("/sources", dependencies=[Depends(auth.require_token)])
+@router.put("/sources", dependencies=[Depends(auth.require_perm("config"))])
 def set_sources(body: dict):
     return state.set_sources_config(body)
 
@@ -380,7 +372,7 @@ def list_webhooks():
     return {"items": webhook.load_webhooks()}
 
 
-@router.post("/webhooks", dependencies=[Depends(auth.require_token)])
+@router.post("/webhooks", dependencies=[Depends(auth.require_perm("config"))])
 def add_webhook(body: dict):
     wbs = webhook.load_webhooks()
     wbs.append({
@@ -395,7 +387,7 @@ def add_webhook(body: dict):
     return {"items": wbs}
 
 
-@router.put("/webhooks/{index}", dependencies=[Depends(auth.require_token)])
+@router.put("/webhooks/{index}", dependencies=[Depends(auth.require_perm("config"))])
 def update_webhook(index: int, body: dict):
     wbs = webhook.load_webhooks()
     if not (0 <= index < len(wbs)):
@@ -407,7 +399,7 @@ def update_webhook(index: int, body: dict):
     return {"items": wbs}
 
 
-@router.delete("/webhooks/{index}", dependencies=[Depends(auth.require_token)])
+@router.delete("/webhooks/{index}", dependencies=[Depends(auth.require_perm("config"))])
 def delete_webhook(index: int):
     wbs = webhook.load_webhooks()
     if not (0 <= index < len(wbs)):
@@ -417,7 +409,7 @@ def delete_webhook(index: int):
     return {"items": wbs}
 
 
-@router.post("/webhooks/{index}/test", dependencies=[Depends(auth.require_token)])
+@router.post("/webhooks/{index}/test", dependencies=[Depends(auth.require_perm("config"))])
 def test_webhook(index: int):
     wbs = webhook.load_webhooks()
     if not (0 <= index < len(wbs)):
@@ -425,7 +417,7 @@ def test_webhook(index: int):
     return {"ok": webhook.test_webhook(wbs[index])}
 
 
-@router.put("/presets/{name}", dependencies=[Depends(auth.require_token)])
+@router.put("/presets/{name}", dependencies=[Depends(auth.require_perm("config"))])
 def update_preset(name: str, body: dict):
     if name not in config.PRESETS:
         raise HTTPException(404, f"未知档位 {name}")
@@ -452,20 +444,9 @@ def info():
     }
 
 
-@router.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "db": db.counts(),
-        "syslog": {"listening": syslog_server.listening, "last_ingest": syslog_server.last_ingest},
-        "knob": state.get_knob_name(),
-        "mode": state.get_model_mode(),
-    }
-
-
-@router.post("/ingest/upload", dependencies=[Depends(auth.require_token)])
+@router.post("/ingest/upload", dependencies=[Depends(auth.require_perm("maintenance"))])
 async def ingest_upload(file: UploadFile = File(...)):
-    """上传 JSONL/JSON/CSV 文件，增量入库。"""
+    """上传 JSONL/JSON/CSV 文件，增量入库（UI 动作，走用户 JWT）。"""
     content = await file.read()
     ext = os.path.splitext(file.filename or "")[1].lower()
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False, mode="wb") as f:

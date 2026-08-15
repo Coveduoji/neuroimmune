@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     action TEXT, entity TEXT, changes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password_hash TEXT,
+    role TEXT DEFAULT 'user',
+    permissions TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 
@@ -82,6 +90,66 @@ def init_db() -> None:
         cols = [r[1] for r in c.execute("PRAGMA table_info(cases)").fetchall()]
         if "reported_at_alerts" not in cols:
             c.execute("ALTER TABLE cases ADD COLUMN reported_at_alerts INTEGER DEFAULT 0")
+        # 迁移：老库的 users 表可能缺 permissions 列
+        cols = [r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()]
+        if "permissions" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'")
+
+
+# ---- 用户 ----
+
+def _user_row(d: dict) -> dict:
+    d["permissions"] = json.loads(d.get("permissions") or "[]")
+    return d
+
+
+def create_user(username: str, password_hash: str, role: str = "user",
+                permissions: list[str] | None = None) -> int:
+    with _conn() as c:
+        cur = c.execute(
+            "INSERT INTO users (username, password_hash, role, permissions) VALUES (?,?,?,?)",
+            (username, password_hash, role, json.dumps(permissions or [], ensure_ascii=False)),
+        )
+        return cur.lastrowid
+
+
+def get_user(user_id: int) -> dict | None:
+    with _conn() as c:
+        r = c.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        return _user_row(dict(r)) if r else None
+
+
+def get_user_by_username(username: str) -> dict | None:
+    with _conn() as c:
+        r = c.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+        return _user_row(dict(r)) if r else None
+
+
+def list_users() -> list[dict]:
+    with _conn() as c:
+        rows = c.execute("SELECT id, username, role, permissions, created_at FROM users ORDER BY id").fetchall()
+        return [_user_row(dict(r)) for r in rows]
+
+
+def delete_user(user_id: int) -> None:
+    with _conn() as c:
+        c.execute("DELETE FROM users WHERE id=?", (user_id,))
+
+
+def update_user_password(user_id: int, password_hash: str) -> None:
+    with _conn() as c:
+        c.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, user_id))
+
+
+def update_user(user_id: int, changes: dict) -> None:
+    sets = ", ".join(f"{k}=?" for k in changes)
+    with _conn() as c:
+        c.execute(f"UPDATE users SET {sets} WHERE id=?", (*changes.values(), user_id))
+
+
+def count_admins() -> int:
+    with _conn() as c:
+        return c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
 
 
 def append_feedback(record: dict) -> None:

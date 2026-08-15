@@ -1,4 +1,4 @@
-export type View = 'triage' | 'hippocampus' | 'dashboard' | 'settings' | 'thalamus' | 'immune';
+export type View = 'triage' | 'hippocampus' | 'dashboard' | 'settings' | 'thalamus' | 'immune' | 'users';
 export type NavTarget = { view?: View; caseId?: number };
 
 let listener: ((t: NavTarget) => void) | null = null;

@@ -3,6 +3,14 @@ export interface Entity {
   value: string;
 }
 
+export interface AuthUser {
+  id: number;
+  username: string;
+  role: string;
+  permissions: string[];
+  created_at: string;
+}
+
 export interface Case {
   id: number;
   correlation_uid: string;

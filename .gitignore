@@ -3,6 +3,7 @@
 *.env
 !*.env.example
 session-transcript-*.jsonl
+backend/secret.key
 
 # === 运行时数据库 / 数据 ===
 *.db

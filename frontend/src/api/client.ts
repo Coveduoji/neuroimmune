@@ -1,20 +1,56 @@
 const BASE = '/api';
 
-// 若浏览器 localStorage 存了 token，则所有请求带上；后端设了 NEUROIMMUNE_API_TOKEN 时才校验。
-const token = () => localStorage.getItem('neuroimmune_token') || '';
+// JWT 存 localStorage，所有请求带 Authorization: Bearer。
+export const getToken = () => localStorage.getItem('neuroimmune_jwt') || '';
+export const setToken = (t: string) => localStorage.setItem('neuroimmune_jwt', t);
+export const clearToken = () => localStorage.removeItem('neuroimmune_jwt');
+
+// 401（token 缺失/过期）时清 token 并通知 App 退回登录页。
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  unauthorizedHandler = fn;
+}
 
 async function j<T>(url: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(opts.headers as Record<string, string> | undefined) };
-  if (token()) headers['X-API-Token'] = token();
+  const t = getToken();
+  if (t) headers['Authorization'] = `Bearer ${t}`;
   const r = await fetch(BASE + url, { ...opts, headers });
+  if (r.status === 401) {
+    clearToken();
+    unauthorizedHandler?.();
+    throw new Error('未登录或登录已过期');
+  }
   if (!r.ok) {
-    const msg = r.status === 401 ? '未授权（token 缺失或错误）' : `${r.status} ${r.statusText}`;
+    let msg = `${r.status} ${r.statusText}`;
+    try {
+      const data = await r.json();
+      if (data && typeof data.detail === 'string') msg = data.detail;
+    } catch { /* ignore */ }
     throw new Error(msg);
   }
   return r.json() as Promise<T>;
 }
 
 export const api = {
+  // ---- 认证 ----
+  login: (username: string, password: string) =>
+    j<{ token: string; user: import('../types').AuthUser }>('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }),
+  me: () => j<import('../types').AuthUser>('/auth/me'),
+  changePassword: (old_password: string, new_password: string) =>
+    j<{ ok: boolean }>('/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ old_password, new_password }) }),
+  register: (username: string, password: string, role: string) =>
+    j<import('../types').AuthUser>('/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, role }) }),
+  listUsers: () => j<{ items: import('../types').AuthUser[] }>('/auth/users'),
+  updateUserRole: (id: number, role: string) =>
+    j<import('../types').AuthUser>(`/auth/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) }),
+  resetUserPassword: (id: number, new_password: string) =>
+    j<{ ok: boolean }>(`/auth/users/${id}/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password }) }),
+  deleteUser: (id: number) => j<{ ok: boolean }>(`/auth/users/${id}`, { method: 'DELETE' }),
+  permissions: () => j<{ items: Record<string, string> }>('/auth/permissions'),
+  updateUserPermissions: (id: number, permissions: string[]) =>
+    j<import('../types').AuthUser>(`/auth/users/${id}/permissions`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions }) }),
+
   listCases: (query = '') => j<{ items: import('../types').Case[]; total: number }>(`/cases${query ? `?${query}` : ''}`),
   getCase: (id: number) => j<import('../types').CaseDetail>(`/cases/${id}`),
   caseHippocampus: (id: number) => j<import('../types').GraphData>(`/cases/${id}/hippocampus`),
@@ -94,7 +130,7 @@ export const api = {
   exportReport: async (body: object) => {
     const r = await fetch(BASE + '/report/export', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token() ? { 'X-API-Token': token() } : {}) },
+      headers: { 'Content-Type': 'application/json', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
       body: JSON.stringify(body),
     });
     if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -104,6 +140,21 @@ export const api = {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = m ? m[1] : 'report';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  },
+  exportCase: async (id: number) => {
+    const r = await fetch(BASE + `/cases/${id}/export`, { headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {} });
+    if (r.status === 401) { clearToken(); unauthorizedHandler?.(); throw new Error('未登录或登录已过期'); }
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const blob = await r.blob();
+    const disp = r.headers.get('Content-Disposition') || '';
+    const m = disp.match(/filename="?([^";]+)"?/);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = m ? m[1] : `case_${id}.md`;
     document.body.appendChild(a);
     a.click();
     a.remove();

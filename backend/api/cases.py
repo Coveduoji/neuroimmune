@@ -14,7 +14,7 @@ import webhook
 from signature import signature
 from schemas import CasePatch
 
-router = APIRouter(prefix="/api/cases", tags=["cases"])
+router = APIRouter(prefix="/api/cases", tags=["cases"], dependencies=[Depends(auth.require_user)])
 
 
 @router.get("")
@@ -26,7 +26,7 @@ def list_cases(status: str | None = None, verdict: str | None = None, severity: 
     }
 
 
-@router.post("/bulk-false-positive", dependencies=[Depends(auth.require_token)])
+@router.post("/bulk-false-positive", dependencies=[Depends(auth.require_perm("triage"))])
 def bulk_false_positive(body: dict):
     """批量标记误报：多个案件一次性回写免疫耐受。"""
     case_ids = (body or {}).get("case_ids", [])
@@ -76,7 +76,7 @@ def get_graph(case_id: int):
     return {"nodes": nodes, "edges": [list(e) for e in edges]}
 
 
-@router.patch("/{case_id}", dependencies=[Depends(auth.require_token)])
+@router.patch("/{case_id}", dependencies=[Depends(auth.require_perm("triage"))])
 def patch_case(case_id: int, body: CasePatch):
     case = db.get_case(case_id)
     if not case:
@@ -94,7 +94,7 @@ def patch_case(case_id: int, body: CasePatch):
     return db.get_case(case_id)
 
 
-@router.post("/{case_id}/false-positive", dependencies=[Depends(auth.require_token)])
+@router.post("/{case_id}/false-positive", dependencies=[Depends(auth.require_perm("triage"))])
 def false_positive(case_id: int, body: dict | None = None):
     if not db.get_case(case_id):
         raise HTTPException(404, "case not found")
@@ -120,7 +120,7 @@ def false_positive(case_id: int, body: dict | None = None):
     return {"case_id": case_id, "learned": learned}
 
 
-@router.post("/{case_id}/true-positive", dependencies=[Depends(auth.require_token)])
+@router.post("/{case_id}/true-positive", dependencies=[Depends(auth.require_perm("triage"))])
 def true_positive(case_id: int, body: dict | None = None):
     """标记真阳性：把案件 (asset, type) 写进固有免疫规则，下次同家族边缘秒拦。"""
     if not db.get_case(case_id):
@@ -146,7 +146,7 @@ def true_positive(case_id: int, body: dict | None = None):
     return {"case_id": case_id, "learned": learned}
 
 
-@router.post("/{case_id}/push", dependencies=[Depends(auth.require_token)])
+@router.post("/{case_id}/push", dependencies=[Depends(auth.require_perm("triage"))])
 def push_case(case_id: int):
     """手动外发一个案件到所有 enabled webhook。"""
     if not db.get_case(case_id):
