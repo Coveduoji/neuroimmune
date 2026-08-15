@@ -22,23 +22,27 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
 
   const refresh = () => api.getCase(id).then(setData);
 
-  const markFP = async () => {
+  const saveVerdict = async () => {
+    if (!verdict) return;
     setBusy(true);
-    const r = await api.falsePositive(id, note);
-    toast(`已标记误报，记住 ${r.learned.length} 条免疫耐受规则`);
-    await refresh();
-    setBusy(false);
-  };
-
-  const markTP = async () => {
-    setBusy(true);
-    const r = await api.truePositive(id, note);
-    toast(`已标记真阳性，记住 ${r.learned.length} 条固有免疫规则`);
+    if (verdict === 'False Positive') {
+      if (!confirm('标记为误报：该案签名将写进免疫耐受白名单，以后同形状告警将被静默。确定？')) { setBusy(false); return; }
+      const r = await api.falsePositive(id, note);
+      toast(`已标记误报，记住 ${r.learned.length} 条免疫耐受规则`);
+    } else if (verdict === 'True Positive') {
+      if (!confirm('标记为真阳性：该案签名将写进固有免疫规则，以后同形状告警将边缘秒拦。确定？')) { setBusy(false); return; }
+      const r = await api.truePositive(id, note);
+      toast(`已标记真阳性，记住 ${r.learned.length} 条固有免疫规则`);
+    } else {
+      await api.patchCase(id, { verdict, note });
+      toast('已保存结论');
+    }
     await refresh();
     setBusy(false);
   };
 
   const markAlert = async (alertId: number, v: string) => {
+    if (!confirm(v === 'False Positive' ? '把这条告警写进免疫耐受白名单？' : '把这条告警写进固有免疫规则？')) return;
     await api.alertDisposition(alertId, v);
     toast(v === 'False Positive' ? '已标记该条告警为误报' : '已标记该条告警为真阳性');
     await refresh();
@@ -156,10 +160,8 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
             <option key={v} value={v}>{v}</option>
           ))}
         </select>
-        <button className="btn" disabled={!verdict || busy} onClick={() => patch({ verdict })}>保存结论</button>
+        <button className="btn" disabled={!verdict || busy} onClick={saveVerdict}>保存结论</button>
         <button className="btn" disabled={busy} onClick={() => patch({ status: 'Closed' })}>关闭案件</button>
-        <button className="btn danger" disabled={busy} onClick={markFP}>标记误报</button>
-        <button className="btn" disabled={busy} onClick={markTP}>标记真阳性</button>
         <button className="btn" disabled={busy} onClick={pushCase}>外发</button>
         <button className="btn" onClick={() => window.open(`/api/cases/${id}/export`)}>导出报告</button>
       </div>

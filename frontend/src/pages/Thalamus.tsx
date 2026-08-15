@@ -65,21 +65,21 @@ export default function Thalamus() {
         {!data ? <div className="muted">加载中…</div> : data.items.length === 0 ? (
           <div className="muted">没有告警。</div>
         ) : data.items.map((a) => (
-          <div key={a.id} className="alert-item">
-            <div className="meta">
-              [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
-              {a.suppressed ? <span className="tag" style={{ marginLeft: 6 }}>被抑制</span> : null}
-              {a.innate ? <span className="tag up" style={{ marginLeft: 6 }}>固有免疫</span> : null}
+          <div key={a.id} className="alert-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div className="meta">
+                [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
+                {a.suppressed ? <span className="tag" style={{ marginLeft: 6 }}>被抑制</span> : null}
+                {a.innate ? <span className="tag up" style={{ marginLeft: 6 }}>固有免疫</span> : null}
+              </div>
+              <div className="raw">{a.raw}</div>
+              {a.suppressed && a.why ? <div className="muted" style={{ fontSize: 12 }}>原因：{a.why}</div> : null}
+              {a.case_uid ? (
+                <div className="meta">案件 <code style={{ cursor: 'pointer', color: 'var(--accent)' }}
+                  onClick={() => navigate({ caseId: a.case_id! })}>{a.case_uid}</code></div>
+              ) : null}
             </div>
-            <div className="raw">{a.raw}</div>
-            {a.suppressed && a.why ? <div className="muted" style={{ fontSize: 12 }}>原因：{a.why}</div> : null}
-            {a.case_uid ? (
-              <div className="meta">案件 <code style={{ cursor: 'pointer', color: 'var(--accent)' }}
-                onClick={() => navigate({ caseId: a.case_id! })}>{a.case_uid}</code></div>
-            ) : null}
-            {a.suppressed ? (
-              <button className="btn" style={{ marginTop: 6 }} onClick={() => restore(a.id)}>放回</button>
-            ) : null}
+            {a.suppressed ? <button className="btn" onClick={() => restore(a.id)}>放回</button> : null}
           </div>
         ))}
         {pages > 1 && (

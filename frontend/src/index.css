@@ -143,6 +143,7 @@ h1, h2, h3, h4 { font-weight: 650; letter-spacing: -0.01em; }
 .chip { font-size: 12px; background: var(--bg-2); border: 1px solid var(--hairline); border-radius: 6px; padding: 3px 10px; color: var(--ink-2); }
 .chip-x { border: none; background: transparent; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1; }
 .chip-x:hover { color: var(--critical); }
+.chip-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
 
 /* ---- 按钮 / 输入 ---- */
 .btn { border: 1px solid var(--hairline); background: var(--surface); color: var(--ink); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .12s; }

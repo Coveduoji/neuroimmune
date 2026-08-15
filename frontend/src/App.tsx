@@ -37,21 +37,19 @@ export default function App() {
     return () => setNavListener(null);
   }, []);
 
-  if (caseId !== null) {
-    return <CaseDetail id={caseId} onBack={() => setCaseId(null)} />;
-  }
+  const go = (v: View) => { setCaseId(null); setView(v); };
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand"><span className="logo">🧠</span>神经免疫 · 工作台</div>
         <nav>
-          <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>{t('dashboard')}</button>
-          <button className={view === 'hippocampus' ? 'active' : ''} onClick={() => setView('hippocampus')}>{t('hippocampus')}</button>
-          <button className={view === 'triage' ? 'active' : ''} onClick={() => setView('triage')}>{t('triage')}</button>
-          <button className={view === 'thalamus' ? 'active' : ''} onClick={() => setView('thalamus')}>{t('thalamus')}</button>
-          <button className={view === 'immune' ? 'active' : ''} onClick={() => setView('immune')}>{t('immune')}</button>
-          <button className={view === 'settings' ? 'active' : ''} onClick={() => setView('settings')}>{t('settings')}</button>
+          <button className={view === 'dashboard' ? 'active' : ''} onClick={() => go('dashboard')}>{t('dashboard')}</button>
+          <button className={view === 'hippocampus' ? 'active' : ''} onClick={() => go('hippocampus')}>{t('hippocampus')}</button>
+          <button className={view === 'triage' ? 'active' : ''} onClick={() => go('triage')}>{t('triage')}</button>
+          <button className={view === 'thalamus' ? 'active' : ''} onClick={() => go('thalamus')}>{t('thalamus')}</button>
+          <button className={view === 'immune' ? 'active' : ''} onClick={() => go('immune')}>{t('immune')}</button>
+          <button className={view === 'settings' ? 'active' : ''} onClick={() => go('settings')}>{t('settings')}</button>
         </nav>
         <div className="spacer" />
         {health && (
@@ -65,12 +63,18 @@ export default function App() {
           </div>
         )}
       </header>
-      <div style={{ display: view === 'triage' ? 'block' : 'none' }}><Triage onOpen={setCaseId} /></div>
-      <div style={{ display: view === 'hippocampus' ? 'block' : 'none' }}><Hippocampus active={view === 'hippocampus'} /></div>
-      <div style={{ display: view === 'dashboard' ? 'block' : 'none' }}><Dashboard /></div>
-      <div style={{ display: view === 'thalamus' ? 'block' : 'none' }}><Thalamus /></div>
-      <div style={{ display: view === 'immune' ? 'block' : 'none' }}><Immune /></div>
-      <div style={{ display: view === 'settings' ? 'block' : 'none' }}><Settings /></div>
+      {caseId !== null ? (
+        <CaseDetail id={caseId} onBack={() => setCaseId(null)} />
+      ) : (
+        <>
+          <div style={{ display: view === 'triage' ? 'block' : 'none' }}><Triage onOpen={setCaseId} /></div>
+          <div style={{ display: view === 'hippocampus' ? 'block' : 'none' }}><Hippocampus active={view === 'hippocampus'} /></div>
+          <div style={{ display: view === 'dashboard' ? 'block' : 'none' }}><Dashboard /></div>
+          <div style={{ display: view === 'thalamus' ? 'block' : 'none' }}><Thalamus /></div>
+          <div style={{ display: view === 'immune' ? 'block' : 'none' }}><Immune /></div>
+          <div style={{ display: view === 'settings' ? 'block' : 'none' }}><Settings /></div>
+        </>
+      )}
     </div>
   );
 }

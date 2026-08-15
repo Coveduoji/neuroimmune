@@ -381,6 +381,7 @@ def add_webhook(body: dict):
         "token": (body or {}).get("token", ""),
         "trigger": (body or {}).get("trigger", "escalated"),
         "enabled": (body or {}).get("enabled", True),
+        "fields": (body or {}).get("fields", webhook.ALL_FIELDS),
     })
     webhook.save_webhooks(wbs)
     return {"items": wbs}
@@ -391,7 +392,7 @@ def update_webhook(index: int, body: dict):
     wbs = webhook.load_webhooks()
     if not (0 <= index < len(wbs)):
         raise HTTPException(404, "webhook 不存在")
-    for k in ("name", "url", "token", "trigger", "enabled"):
+    for k in ("name", "url", "token", "trigger", "enabled", "fields"):
         if k in (body or {}):
             wbs[index][k] = body[k]
     webhook.save_webhooks(wbs)

@@ -7,6 +7,16 @@ import type { WebhookConfig } from '../types';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
 
+const ALL_FIELDS = ['correlation_uid', 'title', 'strength', 'status', 'verdict', 'entities', 'ips', 'alerts',
+  'report.verdict', 'report.confidence', 'report.digest', 'report.attack_chain', 'report.iocs', 'report.remediations', 'report.unknowns'];
+
+const FIELD_GROUPS: [string, [string, string][]][] = [
+  ['案件身份', [['correlation_uid', 'ID'], ['title', '标题'], ['strength', '强度'], ['status', '状态'], ['verdict', '定性']]],
+  ['关联', [['entities', '实体'], ['ips', 'IP'], ['alerts', '告警']]],
+  ['报告', [['report.verdict', '定性'], ['report.confidence', '置信度'], ['report.digest', '摘要'],
+    ['report.attack_chain', '攻击链'], ['report.iocs', 'IOC'], ['report.remediations', '处置建议'], ['report.unknowns', '待查']]],
+];
+
 export default function Settings() {
   const { t, mode: termMode, setMode: setTermMode } = useTerms();
   const [tab, setTab] = useState<'basic' | 'advanced'>('basic');
@@ -18,6 +28,7 @@ export default function Settings() {
   const [whName, setWhName] = useState('');
   const [whUrl, setWhUrl] = useState('');
   const [whTrigger, setWhTrigger] = useState('escalated');
+  const [whFields, setWhFields] = useState<string[]>(ALL_FIELDS);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
@@ -58,11 +69,13 @@ export default function Settings() {
     load();
   };
 
+  const toggleField = (f: string) => setWhFields((s) => (s.includes(f) ? s.filter((x) => x !== f) : [...s, f]));
   const addWebhook = async () => {
     if (!whUrl) { toast('请填 URL'); return; }
-    await api.addWebhook({ name: whName || 'webhook', url: whUrl, trigger: whTrigger, token: '', enabled: true });
+    await api.addWebhook({ name: whName || 'webhook', url: whUrl, trigger: whTrigger, token: '', enabled: true, fields: whFields });
     toast('已添加外发目标');
     setWhName(''); setWhUrl(''); setWhTrigger('escalated');
+    setWhFields(ALL_FIELDS);
     load();
   };
   const removeWebhook = async (i: number) => { await api.deleteWebhook(i); load(); };
@@ -145,6 +158,17 @@ export default function Settings() {
               </select>
             </label>
             <button className="btn primary" onClick={addWebhook}>添加</button>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>外发字段（点选）</div>
+            {FIELD_GROUPS.map(([group, items]) => (
+              <div key={group} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                <span className="muted" style={{ fontSize: 12, minWidth: 48 }}>{group}</span>
+                {items.map(([f, label]) => (
+                  <span key={f} className={`chip ${whFields.includes(f) ? 'chip-on' : ''}`} style={{ cursor: 'pointer' }} onClick={() => toggleField(f)}>{label}</span>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
 

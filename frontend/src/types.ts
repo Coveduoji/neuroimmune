@@ -168,4 +168,5 @@ export interface WebhookConfig {
   token: string;
   trigger: string;
   enabled: boolean;
+  fields: string[];
 }
