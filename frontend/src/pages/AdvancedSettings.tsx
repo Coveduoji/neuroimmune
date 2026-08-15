@@ -2,9 +2,19 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { toast } from '../toast';
 import { Field } from '../components/Field';
-import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig } from '../types';
+import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig } from '../types';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
+
+const ALL_FIELDS = ['correlation_uid', 'title', 'strength', 'status', 'verdict', 'entities', 'ips', 'alerts',
+  'report.verdict', 'report.confidence', 'report.digest', 'report.attack_chain', 'report.iocs', 'report.remediations', 'report.unknowns'];
+
+const FIELD_GROUPS: [string, [string, string][]][] = [
+  ['案件身份', [['correlation_uid', 'ID'], ['title', '标题'], ['strength', '强度'], ['status', '状态'], ['verdict', '定性']]],
+  ['关联', [['entities', '实体'], ['ips', 'IP'], ['alerts', '告警']]],
+  ['报告', [['report.verdict', '定性'], ['report.confidence', '置信度'], ['report.digest', '摘要'],
+    ['report.attack_chain', '攻击链'], ['report.iocs', 'IOC'], ['report.remediations', '处置建议'], ['report.unknowns', '待查']]],
+];
 
 function KeyValueMap({ entries, onChange, keyPh, valPh }: {
   entries: [string, string][];
@@ -38,6 +48,11 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [detection, setDetection] = useState<DetectionConfig | null>(null);
   const [ingest, setIngest] = useState<IngestConfig | null>(null);
   const [sources, setSources] = useState<SourcesConfig | null>(null);
+  const [webhooks, setWebhooks] = useState<WebhookConfig[] | null>(null);
+  const [whName, setWhName] = useState('');
+  const [whUrl, setWhUrl] = useState('');
+  const [whTrigger, setWhTrigger] = useState('escalated');
+  const [whFields, setWhFields] = useState<string[]>(ALL_FIELDS);
 
   const load = () => {
     api.presets().then(setPresets);
@@ -47,6 +62,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     api.detection().then(setDetection);
     api.ingest().then(setIngest);
     api.sources().then(setSources);
+    api.webhooks().then((r) => setWebhooks(r.items));
   };
   useEffect(load, []);
 
@@ -93,6 +109,18 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     setSources(await api.setSources(clean));
     toast('已保存来源映射');
   };
+
+  const toggleField = (f: string) => setWhFields((s) => (s.includes(f) ? s.filter((x) => x !== f) : [...s, f]));
+  const addWebhook = async () => {
+    if (!whUrl) { toast('请填 URL'); return; }
+    await api.addWebhook({ name: whName || 'webhook', url: whUrl, trigger: whTrigger, token: '', enabled: true, fields: whFields });
+    toast('已添加外发目标');
+    setWhName(''); setWhUrl(''); setWhTrigger('escalated');
+    setWhFields(ALL_FIELDS);
+    load();
+  };
+  const removeWebhook = async (i: number) => { await api.deleteWebhook(i); load(); };
+  const testWebhook = async (i: number) => { const r = await api.testWebhook(i); toast(r.ok ? '测试成功' : '测试失败'); };
 
   return (
     <div className="page">
@@ -248,6 +276,44 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
               <button className="btn primary" onClick={saveSources} style={{ marginTop: 8 }}>保存来源映射</button>
             </div>
           )}
+        </div>
+
+        <div className="card">
+          <div className="sec-label">案件外发（Webhook）</div>
+          <p className="muted">案件顶出深析后自动 POST 到这些地址，供 SOAR / SIEM / 工单 / 通知等下游消费。</p>
+          {(webhooks ?? []).map((w, i) => (
+            <div key={i} className="alert-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <code style={{ wordBreak: 'break-all' }}>{w.name} → {w.url}</code>
+                <span className="tag" style={{ marginLeft: 8 }}>{w.trigger === 'escalated' ? '顶出即推' : w.trigger === 'all' ? '全部' : '仅手动'}</span>
+              </div>
+              <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => testWebhook(i)}>测试</button>
+              <button className="chip-x" title="删除" onClick={() => removeWebhook(i)}>×</button>
+            </div>
+          ))}
+          <div className="field-row" style={{ marginTop: 10 }}>
+            <label className="field"><span>名称</span><input value={whName} onChange={(e) => setWhName(e.target.value)} /></label>
+            <label className="field"><span>URL</span><input value={whUrl} placeholder="http://…" onChange={(e) => setWhUrl(e.target.value)} /></label>
+            <label className="field"><span>触发</span>
+              <select value={whTrigger} onChange={(e) => setWhTrigger(e.target.value)}>
+                <option value="escalated">顶出即推</option>
+                <option value="all">全部</option>
+                <option value="manual">仅手动</option>
+              </select>
+            </label>
+            <button className="btn primary" onClick={addWebhook}>添加</button>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>外发字段（点选）</div>
+            {FIELD_GROUPS.map(([group, items]) => (
+              <div key={group} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                <span className="muted" style={{ fontSize: 12, minWidth: 48 }}>{group}</span>
+                {items.map(([f, label]) => (
+                  <span key={f} className={`chip ${whFields.includes(f) ? 'chip-on' : ''}`} style={{ cursor: 'pointer' }} onClick={() => toggleField(f)}>{label}</span>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
