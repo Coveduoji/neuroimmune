@@ -4,6 +4,8 @@
 #   docker compose up -d --build
 # 数据持久化在命名卷 neuroimmune-data（挂到 backend 的 /data）。
 
+version: "3.8"   # 兼容老版 docker-compose v1（CentOS 7 默认只有 v1）；新版 v2 忽略此字段
+
 services:
   backend:
     image: neuroimmune-backend:latest
