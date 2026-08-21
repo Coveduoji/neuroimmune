@@ -165,6 +165,8 @@ export interface IngestConfig {
   syslog_port: number;
   consolidate_interval: number;
   api_token: string;
+  retention_alert_days: number;
+  retention_case_days: number;
 }
 
 export interface SourcesConfig {

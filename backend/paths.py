@@ -33,3 +33,4 @@ WEBHOOKS_PATH = data_dir() / "webhooks.json"
 
 FEEDBACK_PATH = data_dir() / "data" / "feedback.jsonl"
 MEMORY_PATH = data_dir() / "data" / "memory.jsonl"
+ARCHIVE_PATH = data_dir() / "archive"

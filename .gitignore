@@ -28,6 +28,7 @@ logs/
 
 # === 备份归档 ===
 backups/
+backend/archive/
 
 # === 离线部署打包产物 ===
 dist-offline*/

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import time
 
 from paths import DB_PATH, FEEDBACK_PATH, MEMORY_PATH
@@ -57,42 +58,70 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """
 
+# 高频路径索引：避免 count_historical_alerts 全表扫描、实体反查 JOIN 随数据量变慢
+INDEXES = (
+    "CREATE INDEX IF NOT EXISTS idx_alerts_asset_type_created ON alerts(asset, type, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_alerts_case_id ON alerts(case_id)",
+    "CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_alerts_source ON alerts(source)",
+    "CREATE INDEX IF NOT EXISTS idx_alert_artifacts_alert_id ON alert_artifacts(alert_id)",
+    "CREATE INDEX IF NOT EXISTS idx_alert_artifacts_artifact_id ON alert_artifacts(artifact_id)",
+)
+
+# init_db 幂等化：建库/迁移/索引只在首次执行，热路径每条信号调到的 init_db 直接返回
+_init_lock = threading.Lock()
+_initialized = False
+
 
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=5.0)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db() -> None:
-    with _conn() as c:
-        c.executescript(SCHEMA)
-        # 迁移：老库的 reports 表可能缺 attack_chain_json 列
-        cols = [r[1] for r in c.execute("PRAGMA table_info(reports)").fetchall()]
-        if "attack_chain_json" not in cols:
-            c.execute("ALTER TABLE reports ADD COLUMN attack_chain_json TEXT")
-        # 迁移：老库的 cases 表可能缺 disposition_note 列
-        cols = [r[1] for r in c.execute("PRAGMA table_info(cases)").fetchall()]
-        if "disposition_note" not in cols:
-            c.execute("ALTER TABLE cases ADD COLUMN disposition_note TEXT DEFAULT ''")
-        # 迁移：老库的 alerts 表可能缺 suppressed / why / verdict 列
-        cols = [r[1] for r in c.execute("PRAGMA table_info(alerts)").fetchall()]
-        if "suppressed" not in cols:
-            c.execute("ALTER TABLE alerts ADD COLUMN suppressed INTEGER DEFAULT 0")
-        if "why" not in cols:
-            c.execute("ALTER TABLE alerts ADD COLUMN why TEXT DEFAULT ''")
-        if "verdict" not in cols:
-            c.execute("ALTER TABLE alerts ADD COLUMN verdict TEXT DEFAULT ''")
-        if "created_at" not in cols:
-            c.execute("ALTER TABLE alerts ADD COLUMN created_at TEXT DEFAULT ''")
-        # 迁移：老库的 cases 表可能缺 reported_at_alerts 列
-        cols = [r[1] for r in c.execute("PRAGMA table_info(cases)").fetchall()]
-        if "reported_at_alerts" not in cols:
-            c.execute("ALTER TABLE cases ADD COLUMN reported_at_alerts INTEGER DEFAULT 0")
-        # 迁移：老库的 users 表可能缺 permissions 列
-        cols = [r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()]
-        if "permissions" not in cols:
-            c.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'")
+    global _initialized
+    with _init_lock:
+        if _initialized:
+            return
+        # WAL 需在无事务的独立连接上设置，持久化到 DB 文件头；读写并发不再互斥
+        _wal = _conn()
+        try:
+            _wal.execute("PRAGMA journal_mode=WAL")
+        finally:
+            _wal.close()
+        with _conn() as c:
+            c.executescript(SCHEMA)
+            # 迁移：老库的 reports 表可能缺 attack_chain_json 列
+            cols = [r[1] for r in c.execute("PRAGMA table_info(reports)").fetchall()]
+            if "attack_chain_json" not in cols:
+                c.execute("ALTER TABLE reports ADD COLUMN attack_chain_json TEXT")
+            # 迁移：老库的 cases 表可能缺 disposition_note 列
+            cols = [r[1] for r in c.execute("PRAGMA table_info(cases)").fetchall()]
+            if "disposition_note" not in cols:
+                c.execute("ALTER TABLE cases ADD COLUMN disposition_note TEXT DEFAULT ''")
+            # 迁移：老库的 alerts 表可能缺 suppressed / why / verdict 列
+            cols = [r[1] for r in c.execute("PRAGMA table_info(alerts)").fetchall()]
+            if "suppressed" not in cols:
+                c.execute("ALTER TABLE alerts ADD COLUMN suppressed INTEGER DEFAULT 0")
+            if "why" not in cols:
+                c.execute("ALTER TABLE alerts ADD COLUMN why TEXT DEFAULT ''")
+            if "verdict" not in cols:
+                c.execute("ALTER TABLE alerts ADD COLUMN verdict TEXT DEFAULT ''")
+            if "created_at" not in cols:
+                c.execute("ALTER TABLE alerts ADD COLUMN created_at TEXT DEFAULT ''")
+            # 迁移：老库的 cases 表可能缺 reported_at_alerts 列
+            cols = [r[1] for r in c.execute("PRAGMA table_info(cases)").fetchall()]
+            if "reported_at_alerts" not in cols:
+                c.execute("ALTER TABLE cases ADD COLUMN reported_at_alerts INTEGER DEFAULT 0")
+            # 迁移：老库的 users 表可能缺 permissions 列
+            cols = [r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()]
+            if "permissions" not in cols:
+                c.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'")
+            # 高频路径索引（幂等；在已有数据的旧库上首次会一次性重建）
+            for ddl in INDEXES:
+                c.execute(ddl)
+        _initialized = True
 
 
 # ---- 用户 ----
@@ -628,3 +657,46 @@ CASE_TRANSITIONS = {
 
 def is_valid_transition(current: str, new: str) -> bool:
     return current == new or new in CASE_TRANSITIONS.get(current, set())
+
+
+# ---- 保留策略：归档/删除旧告警、案件、孤儿实体 ----
+
+def alerts_older_than(cutoff: str) -> list[dict]:
+    """取出 created_at 早于 cutoff 的告警（供归档）。"""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM alerts WHERE created_at < ? ORDER BY created_at", (cutoff,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def delete_alerts_older_than(cutoff: str) -> int:
+    """删除 created_at 早于 cutoff 的告警，及其实体关联。"""
+    with _conn() as c:
+        c.execute(
+            "DELETE FROM alert_artifacts WHERE alert_id IN "
+            "(SELECT id FROM alerts WHERE created_at < ?)", (cutoff,),
+        )
+        cur = c.execute("DELETE FROM alerts WHERE created_at < ?", (cutoff,))
+        return cur.rowcount
+
+
+def delete_orphan_artifacts() -> int:
+    """删除不再被任何告警引用的孤儿实体。"""
+    with _conn() as c:
+        cur = c.execute(
+            "DELETE FROM artifacts WHERE id NOT IN "
+            "(SELECT DISTINCT artifact_id FROM alert_artifacts)",
+        )
+        return cur.rowcount
+
+
+def delete_cases_older_than(cutoff: str) -> int:
+    """删除 created_at 早于 cutoff 的案件，及其报告。"""
+    with _conn() as c:
+        c.execute(
+            "DELETE FROM reports WHERE case_id IN "
+            "(SELECT id FROM cases WHERE created_at < ?)", (cutoff,),
+        )
+        cur = c.execute("DELETE FROM cases WHERE created_at < ?", (cutoff,))
+        return cur.rowcount

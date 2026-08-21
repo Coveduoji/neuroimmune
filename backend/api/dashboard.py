@@ -335,7 +335,7 @@ def set_ingest(body: dict):
     ing = state.get_ingest_config()
     if body.get("api_token") and not str(body["api_token"]).startswith("••••"):
         ing["api_token"] = body["api_token"]
-    for k in ("syslog_bind", "syslog_port", "consolidate_interval"):
+    for k in ("syslog_bind", "syslog_port", "consolidate_interval", "retention_alert_days", "retention_case_days"):
         if k in body and body[k] is not None:
             ing[k] = body[k]
     ing = state.set_ingest_config(ing)

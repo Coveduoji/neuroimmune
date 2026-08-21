@@ -157,6 +157,8 @@ def get_ingest_config() -> dict:
         "consolidate_interval": int(cfg.get("consolidate_interval")
                                     or os.environ.get("NEUROIMMUNE_CONSOLIDATE_INTERVAL", "21600")),
         "api_token": cfg.get("api_token", "") or os.environ.get("NEUROIMMUNE_API_TOKEN", "").strip(),
+        "retention_alert_days": int(cfg.get("retention_alert_days", 30)),
+        "retention_case_days": int(cfg.get("retention_case_days", 180)),
     }
 
 

@@ -76,6 +76,13 @@ def _consolidate_loop() -> None:
             logger.info("夜间巩固 %s，新固有免疫规则 %s 条", r.get("status"), len(r.get("new_rules", [])))
         except Exception:
             logger.exception("夜间巩固失败")
+        try:
+            import retention
+            r = retention.run_retention()
+            if any(r.values()):
+                logger.info("保留清理 %s", r)
+        except Exception:
+            logger.exception("保留清理失败")
 
 
 threading.Thread(target=_consolidate_loop, daemon=True).start()

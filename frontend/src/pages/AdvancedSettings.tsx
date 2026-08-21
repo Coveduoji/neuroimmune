@@ -279,12 +279,14 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                     <Field label="syslog 地址"><input value={ingest.syslog_bind} onChange={(e) => patchIngest('syslog_bind', e.target.value)} /></Field>
                     <Field label="syslog 端口"><input type="number" value={ingest.syslog_port} onChange={(e) => patchIngest('syslog_port', +e.target.value)} /></Field>
                     <Field label="巩固间隔（秒）"><input type="number" value={ingest.consolidate_interval} onChange={(e) => patchIngest('consolidate_interval', +e.target.value)} /></Field>
+                    <Field label="告警保留（天）"><input type="number" value={ingest.retention_alert_days} onChange={(e) => patchIngest('retention_alert_days', +e.target.value)} /></Field>
+                    <Field label="案件保留（天）"><input type="number" value={ingest.retention_case_days} onChange={(e) => patchIngest('retention_case_days', +e.target.value)} /></Field>
                     <Field label="API token"><input value={ingest.api_token} placeholder="••••（空 = 免鉴权）" onChange={(e) => patchIngest('api_token', e.target.value)} /></Field>
                   </div>
                   <button className="btn primary" onClick={saveIngest} style={{ marginTop: 14 }}>保存</button>
                 </>
               )}
-              <p className="muted" style={{ marginTop: 8 }}>syslog 地址/端口改后需重启后端；巩固间隔与 API token 立即生效。</p>
+              <p className="muted" style={{ marginTop: 8 }}>syslog 地址/端口改后需重启后端；巩固间隔、保留天数与 API token 下个周期生效。保留天数：告警超期先归档到 archive/ 再删除，案件/报告留更久。</p>
             </div>
           )}
 
