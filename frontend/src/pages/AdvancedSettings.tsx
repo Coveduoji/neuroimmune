@@ -66,6 +66,9 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [whUrl, setWhUrl] = useState('');
   const [whTrigger, setWhTrigger] = useState('escalated');
   const [whFields, setWhFields] = useState<string[]>(ALL_FIELDS);
+  const [whToken, setWhToken] = useState('');
+  const [whHeaders, setWhHeaders] = useState<[string, string][]>([]);
+  const [whBody, setWhBody] = useState('');
   const [section, setSection] = useState('presets');
 
   const load = () => {
@@ -127,10 +130,14 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const toggleField = (f: string) => setWhFields((s) => (s.includes(f) ? s.filter((x) => x !== f) : [...s, f]));
   const addWebhook = async () => {
     if (!whUrl) { toast('请填 URL'); return; }
-    await api.addWebhook({ name: whName || 'webhook', url: whUrl, trigger: whTrigger, token: '', enabled: true, fields: whFields });
+    await api.addWebhook({
+      name: whName || 'webhook', url: whUrl, trigger: whTrigger, token: whToken, enabled: true, fields: whFields,
+      headers: Object.fromEntries(whHeaders.filter(([k]) => k.trim())),
+      body: whBody,
+    });
     toast('已添加外发目标');
-    setWhName(''); setWhUrl(''); setWhTrigger('escalated');
-    setWhFields(ALL_FIELDS);
+    setWhName(''); setWhUrl(''); setWhTrigger('escalated'); setWhToken('');
+    setWhFields(ALL_FIELDS); setWhHeaders([]); setWhBody('');
     load();
   };
   const removeWebhook = async (i: number) => { await api.deleteWebhook(i); load(); };
@@ -337,6 +344,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
               <div className="field-row" style={{ marginTop: 10 }}>
                 <label className="field"><span>名称</span><input value={whName} onChange={(e) => setWhName(e.target.value)} /></label>
                 <label className="field"><span>URL</span><input value={whUrl} placeholder="http://…" onChange={(e) => setWhUrl(e.target.value)} /></label>
+                <label className="field"><span>Token</span><input value={whToken} placeholder="Bearer，可留空" onChange={(e) => setWhToken(e.target.value)} /></label>
                 <label className="field"><span>触发</span>
                   <select value={whTrigger} onChange={(e) => setWhTrigger(e.target.value)}>
                     <option value="escalated">顶出即推</option>
@@ -347,7 +355,52 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                 <button className="btn primary" onClick={addWebhook}>添加</button>
               </div>
               <div style={{ marginTop: 12 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>外发字段（点选）</div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>自定义请求头（-H）</div>
+                <KeyValueMap entries={whHeaders} onChange={setWhHeaders} keyPh="Header" valPh="值" />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>请求体模板（Jinja2，留空=默认固定信封）</div>
+                <textarea value={whBody} placeholder='如 {"content": {{ case | tojson }}}'
+                  onChange={(e) => setWhBody(e.target.value)} style={{ width: '100%', minHeight: 72, fontFamily: 'monospace' }} />
+                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  留空 = 发送默认固定 JSON。字段值加 <code>| tojson</code>（自动加引号+转义），可能为空的 report 字段再加 <code>default("")</code>。
+                  <details style={{ marginTop: 4 }}>
+                    <summary style={{ cursor: 'pointer' }}>查看变量与示例</summary>
+                    <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{`可用变量（含义）：
+  event       → 触发事件（escalated / disposition / case_pushed / test）
+  timestamp   → 发送时间戳
+
+  case.correlation_uid → 案件唯一 ID
+  case.title           → 案件标题
+  case.strength        → 强度（0~1 数值）
+  case.status          → 状态
+  case.verdict         → 定性
+  case.entities        → 实体列表（每个含 type / value）
+  case.ips             → 涉及的 IP 列表
+  case.alerts          → 关联告警列表（time / source / asset / type / raw / confidence）
+
+  case.report.verdict       → 报告定性
+  case.report.confidence    → 报告置信度
+  case.report.digest        → 报告摘要（一段文字）
+  case.report.attack_chain  → 攻击链
+  case.report.iocs          → IOC 列表
+  case.report.remediations  → 处置建议
+  case.report.unknowns      → 待查项
+
+示例（模板 → 发送的 body）：
+  {"content": {{ case | tojson }}}
+       → {"content": { …整个案件… }}
+
+  {"content": {{ case.report.digest | default("") | tojson }}}
+       → {"content": "主机…异常外联"}
+
+  {"token":"xxx","title":{{ case.title | tojson }}}
+       → {"token":"xxx","title":"内网主机…"}`}</div>
+                  </details>
+                </div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>外发字段（点选）— 仅请求体模板留空时生效</div>
                 {FIELD_GROUPS.map(([group, items]) => (
                   <div key={group} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                     <span className="muted" style={{ fontSize: 12, minWidth: 48 }}>{group}</span>

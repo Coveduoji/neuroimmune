@@ -10,6 +10,7 @@ import threading
 from datetime import datetime
 
 import httpx
+import jinja2
 
 import db
 from paths import WEBHOOKS_PATH
@@ -21,6 +22,10 @@ ALL_FIELDS = [
     "report.verdict", "report.confidence", "report.digest",
     "report.attack_chain", "report.iocs", "report.remediations", "report.unknowns",
 ]
+
+# 请求体模板环境：ChainableUndefined 让模板引用缺失字段/None 时渲染为空串而非报错；
+# autoescape=False 因为输出是请求体不是 HTML。
+_ENV = jinja2.Environment(undefined=jinja2.ChainableUndefined, autoescape=False)
 
 
 def load_webhooks() -> list[dict]:
@@ -90,10 +95,17 @@ def _deliver(wb: dict, payload: dict) -> bool:
     headers = {"Content-Type": "application/json"}
     if wb.get("token"):
         headers["Authorization"] = f"Bearer {wb['token']}"
+    headers.update(wb.get("headers") or {})  # 自定义头（-H）覆盖默认头
     try:
+        # 有 body 模板 → 渲染为原始请求体；否则回退到固定 JSON 信封（按 fields 裁剪）
+        if wb.get("body"):
+            content = _ENV.from_string(wb["body"]).render(**payload)
+            kwargs = {"data": content}
+        else:
+            kwargs = {"json": _filter(payload, wb.get("fields"))}
         # trust_env=False：外发目标多为内网/本地下游，直连不走代理（也避免 httpx 解析 socks 代理报错）
         with httpx.Client(trust_env=False, timeout=10) as client:
-            resp = client.post(wb.get("url", ""), json=payload, headers=headers)
+            resp = client.post(wb.get("url", ""), headers=headers, **kwargs)
         ok = 200 <= resp.status_code < 400
         db.insert_audit("webhook", wb.get("name", ""),
                         json.dumps({"event": payload.get("event"), "status": resp.status_code, "ok": ok},
@@ -117,13 +129,13 @@ def _matches(wb: dict, event: str) -> bool:
 
 
 def notify(event: str, case_id: int) -> None:
-    """fire-and-forget：按 trigger 匹配 + 各 webhook 的 fields 裁剪后推送，不阻塞调用方。"""
+    """fire-and-forget：按 trigger 匹配后推送，不阻塞调用方（字段裁剪/模板渲染在 _deliver 内）。"""
     payload = _payload(event, case_id)
     if not payload:
         return
     for wb in load_webhooks():
         if _matches(wb, event):
-            threading.Thread(target=_deliver, args=(wb, _filter(payload, wb.get("fields"))), daemon=True).start()
+            threading.Thread(target=_deliver, args=(wb, payload), daemon=True).start()
 
 
 def push_case(case_id: int) -> list[dict]:
@@ -135,7 +147,7 @@ def push_case(case_id: int) -> list[dict]:
     for wb in load_webhooks():
         if wb.get("enabled", True):
             results.append({"name": wb.get("name", ""), "url": wb.get("url", ""),
-                            "ok": _deliver(wb, _filter(payload, wb.get("fields")))})
+                            "ok": _deliver(wb, payload)})
     return results
 
 
