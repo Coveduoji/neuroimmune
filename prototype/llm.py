@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 
 import httpx
 
@@ -58,38 +59,51 @@ class OpenAICompatClient(ModelClient):
     """任何 OpenAI 兼容端点通用：DeepSeek / OpenRouter / Groq / Ollama / vLLM。
 
     temperature=None 表示不发送该参数（推理模型如 deepseek-reasoner 不支持）。
+
+    httpx.Client 作为实例持有（连接池复用，跨请求保活），不再每条请求新建连接。
+    并发上限由 semaphore 限制、连接池大小由 max_connections 限制——两者应一致
+    （都等于配置的并发数，见 backend/state.py）。
     """
 
     def __init__(self, base_url: str, api_key: str, model: str, temperature: float | None = 0.0,
-                 timeout: float = 120.0):
+                 timeout: float = 120.0, max_connections: int = 1,
+                 semaphore: threading.BoundedSemaphore | None = None):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
         self.timeout = timeout
-
-    def _post(self, content: str) -> str:
+        self.semaphore = semaphore
+        limits = httpx.Limits(max_connections=max_connections,
+                              max_keepalive_connections=max_connections)
         # 显式指定代理，避免 httpx 去解析 socks:// 的 ALL_PROXY 而崩掉。
         # 注意 httpx 0.28 起用单数 proxy=，且是 Client 的参数，故显式构造 Client。
         proxy = _env_http_proxy()
         if proxy:
-            client = httpx.Client(proxy=proxy, timeout=self.timeout)
+            self._client = httpx.Client(proxy=proxy, timeout=timeout, limits=limits)
         else:
-            client = httpx.Client(trust_env=False, timeout=self.timeout)
+            self._client = httpx.Client(trust_env=False, timeout=timeout, limits=limits)
+
+    def _post(self, content: str) -> str:
         payload: dict = {
             "model": self.model,
             "messages": [{"role": "user", "content": content}],
         }
         if self.temperature is not None:
             payload["temperature"] = self.temperature
-        with client:
-            resp = client.post(
+        if self.semaphore is not None:
+            self.semaphore.acquire()
+        try:
+            resp = self._client.post(
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 json=payload,
             )
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+        finally:
+            if self.semaphore is not None:
+                self.semaphore.release()
 
     def judge(self, signal: dict) -> str:
         return self._post(_judge_prompt(signal))

@@ -7,6 +7,8 @@ backend/secret.key
 
 # === 运行时数据库 / 数据 ===
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 backend/data/feedback.jsonl
 

@@ -283,12 +283,11 @@ def delete_alert(alert_id: int) -> None:
 
 
 def get_or_create_artifact(type_: str, value: str) -> int:
+    """幂等取/建实体：INSERT OR IGNORE 消除并发下的 SELECT-then-INSERT 竞态（撞 UNIQUE）。"""
     with _conn() as c:
+        c.execute("INSERT OR IGNORE INTO artifacts (type, value) VALUES (?,?)", (type_, value))
         row = c.execute("SELECT id FROM artifacts WHERE type=? AND value=?", (type_, value)).fetchone()
-        if row:
-            return row["id"]
-        cur = c.execute("INSERT INTO artifacts (type, value) VALUES (?,?)", (type_, value))
-        return cur.lastrowid
+        return row["id"]
 
 
 def link_alert_artifact(alert_id: int, artifact_id: int) -> None:

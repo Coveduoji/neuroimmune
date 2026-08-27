@@ -39,6 +39,10 @@ import webhook
 _woken_cases: dict[int, float] = {}  # case_id -> 最近一次唤醒时间
 _wake_lock = threading.Lock()
 
+# 归案/建案/写库的全局串行锁：并发 worker 下，同一实体首现可能重复建案、
+# get_or_create_artifact 可能撞 UNIQUE，必须串行化归案这一段（模型调用在锁外）。
+_ingest_lock = threading.Lock()
+
 
 def _within_budget(budget: int, window: int) -> bool:
     """当前是否还能唤醒系统2：窗口内已唤醒的不同案件数 < budget。"""
@@ -251,35 +255,38 @@ def process_signal(signal: dict, knob_name: str | None = None) -> dict:
 
     ents = artifact.extract_entities({"asset": e.asset, "raw": e.raw})
 
-    # 归案：任一实体命中的已有案件
-    case_ids: set[int] = set()
-    for ent in ents:
-        for c in db.cases_for_entity(ent.type, ent.value):
-            case_ids.add(c["id"])
+    # 归案 + 写库在全局锁内串行（并发 worker 下避免重复建案/撞 UNIQUE）。
+    # 模型调用（amygdala.judge）在锁外，锁内只有毫秒级 DB 读写，不构成瓶颈。
+    with _ingest_lock:
+        # 归案：任一实体命中的已有案件
+        case_ids: set[int] = set()
+        for ent in ents:
+            for c in db.cases_for_entity(ent.type, ent.value):
+                case_ids.add(c["id"])
 
-    if len(case_ids) > 1:
-        keep = min(case_ids)
-        for cid in sorted(case_ids - {keep}):
-            db.merge_case(cid, keep)
-        case_id = keep
-    elif len(case_ids) == 1:
-        case_id = case_ids.pop()
-    else:
-        uid = graphmod.component_id(ents)
-        title = "、".join(x.value for x in ents[:3]) or "未命名案件"
-        case_id = db.insert_case(
-            correlation_uid=uid, title=title, strength=0.0,
-            entity_summary=json.dumps([{"type": x.type, "value": x.value} for x in ents], ensure_ascii=False),
-        )
+        if len(case_ids) > 1:
+            keep = min(case_ids)
+            for cid in sorted(case_ids - {keep}):
+                db.merge_case(cid, keep)
+            case_id = keep
+        elif len(case_ids) == 1:
+            case_id = case_ids.pop()
+        else:
+            uid = graphmod.component_id(ents)
+            title = "、".join(x.value for x in ents[:3]) or "未命名案件"
+            case_id = db.insert_case(
+                correlation_uid=uid, title=title, strength=0.0,
+                entity_summary=json.dumps([{"type": x.type, "value": x.value} for x in ents], ensure_ascii=False),
+            )
 
-    alert_id = db.insert_alert(case_id, e)
-    for ent in ents:
-        db.link_alert_artifact(alert_id, db.get_or_create_artifact(ent.type, ent.value))
+        alert_id = db.insert_alert(case_id, e)
+        for ent in ents:
+            db.link_alert_artifact(alert_id, db.get_or_create_artifact(ent.type, ent.value))
 
-    # 更新案件强度
-    alerts = db.get_case_alerts(case_id)
-    strength = max(a["confidence"] for a in alerts) + min(d["chain_cap"], d["chain_bonus"] * (len(alerts) - 1))
-    db.update_case_strength(case_id, round(strength, 3))
+        # 更新案件强度
+        alerts = db.get_case_alerts(case_id)
+        strength = max(a["confidence"] for a in alerts) + min(d["chain_cap"], d["chain_bonus"] * (len(alerts) - 1))
+        db.update_case_strength(case_id, round(strength, 3))
 
     # 顶出决策：越过顶出线才考虑唤醒系统2，但要过两重门——
     #   ① 单信号门槛：单信号案件默认不醒（除非 conf >= 地板值），要等拼链或确凿单点 IOC；
@@ -323,21 +330,41 @@ def restore_signal(signal: dict) -> dict:
         reason="分析师放回：被误压的信号",
     )
     ents = artifact.extract_entities({"asset": e.asset, "raw": e.raw})
-    uid = graphmod.component_id(ents)
-    existing = db.get_case_by_uid(uid)
-    if existing:
-        case_id = existing["id"]
-    else:
-        title = "、".join(f"{x.value}" for x in ents[:3]) or "放回信号"
-        case_id = db.insert_case(
-            correlation_uid=uid, title=title, strength=d["restore_conf"],
-            entity_summary=json.dumps([{"type": x.type, "value": x.value} for x in ents], ensure_ascii=False),
-        )
-    alert_id = db.insert_alert(case_id, e)
-    for ent in ents:
-        db.link_alert_artifact(alert_id, db.get_or_create_artifact(ent.type, ent.value))
+    # 与流式 process_signal 共享同一把归案锁，避免放回动作与并发入库竞态。
+    # 归案改用实体反查（对齐 process_signal），不再用 correlation_uid 精确匹配：
+    # 放回信号若共享已有案件的实体，会正确并回原链，而不是拆成新案。
+    with _ingest_lock:
+        case_ids: set[int] = set()
+        for ent in ents:
+            for c in db.cases_for_entity(ent.type, ent.value):
+                case_ids.add(c["id"])
+
+        if len(case_ids) > 1:
+            keep = min(case_ids)
+            for cid in sorted(case_ids - {keep}):
+                db.merge_case(cid, keep)
+            case_id = keep
+        elif len(case_ids) == 1:
+            case_id = case_ids.pop()
+        else:
+            uid = graphmod.component_id(ents)
+            title = "、".join(f"{x.value}" for x in ents[:3]) or "放回信号"
+            case_id = db.insert_case(
+                correlation_uid=uid, title=title, strength=d["restore_conf"],
+                entity_summary=json.dumps([{"type": x.type, "value": x.value} for x in ents], ensure_ascii=False),
+            )
+
+        alert_id = db.insert_alert(case_id, e)
+        for ent in ents:
+            db.link_alert_artifact(alert_id, db.get_or_create_artifact(ent.type, ent.value))
+
+        # 更新案件强度（放回信号以 restore_conf 抬高所在案件，同 process_signal）
+        alerts = db.get_case_alerts(case_id)
+        strength = max(a["confidence"] for a in alerts) + min(d["chain_cap"], d["chain_bonus"] * (len(alerts) - 1))
+        db.update_case_strength(case_id, round(strength, 3))
+        uid = db.get_case(case_id)["correlation_uid"]
+
     # 后台跑系统2，放回立即返回、不阻塞，带记忆 RAG
-    import threading
     knowledge = _retrieve_knowledge([x.value for x in ents], d["rag_limit"])
     threading.Thread(
         target=lambda: db.insert_report(case_id, system2.deep_analyze_chain([e], deep_client, knowledge)),

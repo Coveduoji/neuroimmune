@@ -68,26 +68,27 @@ listening = False
 last_ingest = None  # 最近一次成功入库的时间戳
 _udp_thread: threading.Thread | None = None
 _tcp_thread: threading.Thread | None = None
-_worker_thread: threading.Thread | None = None
+_worker_threads: list[threading.Thread] = []
 
 
 def status() -> dict:
     """供 /api/health 读取：反映线程真实存活，而非启动时只设一次的布尔。"""
-    alive = all(
-        t is not None and t.is_alive()
-        for t in (_udp_thread, _tcp_thread, _worker_thread)
+    workers_alive = bool(_worker_threads) and all(t.is_alive() for t in _worker_threads)
+    alive = workers_alive and all(
+        t is not None and t.is_alive() for t in (_udp_thread, _tcp_thread)
     )
     return {
         "listening": alive,
         "udp_alive": _udp_thread is not None and _udp_thread.is_alive(),
         "tcp_alive": _tcp_thread is not None and _tcp_thread.is_alive(),
-        "worker_alive": _worker_thread is not None and _worker_thread.is_alive(),
+        "worker_alive": workers_alive,
+        "workers": len(_worker_threads),
         "last_ingest": last_ingest,
     }
 
 
 def start(bind: str | None = None, port: int | None = None) -> None:
-    global listening, _udp_thread, _tcp_thread, _worker_thread
+    global listening, _udp_thread, _tcp_thread, _worker_threads
     # 接入配置（设置页可改）优先，环境变量 fallback。改 bind/port 需重启后端（socket 已绑定）。
     ingest = state.get_ingest_config()
     bind = bind or ingest.get("syslog_bind")
@@ -116,7 +117,11 @@ def start(bind: str | None = None, port: int | None = None) -> None:
             except Exception:
                 logger.exception("syslog 信号处理失败")
 
-    _worker_thread = threading.Thread(target=worker, daemon=True)
-    _worker_thread.start()
+    # 多 worker 并发消费队列：worker 数对齐小模型（杏仁核）并发上限。模型调用在
+    # process_signal 内被信号量限流，worker 数再多也会阻塞在信号量上，取并发上限即可。
+    n_workers = state.judge_concurrency()
+    _worker_threads = [threading.Thread(target=worker, daemon=True) for _ in range(n_workers)]
+    for t in _worker_threads:
+        t.start()
     listening = True
-    logger.info("已监听 UDP/TCP %s:%s，增量入库中", bind, port)
+    logger.info("已监听 UDP/TCP %s:%s，%d 个 worker 增量入库中", bind, port, n_workers)

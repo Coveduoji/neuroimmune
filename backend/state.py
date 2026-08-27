@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 
 import config
@@ -22,6 +23,40 @@ from paths import (
 )
 
 _DEFAULT = "正常"
+
+# ---- 模型调用并发上限（进程内全局，改 detection.json 后需重启后端生效）----
+# 小模型（杏仁核/系统1 初筛）与大模型（前额叶/系统2 深想）各一个信号量 + 连接池缓存，
+# 覆盖所有入口（syslog 流式 / HTTP 入库 / 放回 / 批量），保证并发不超限。
+_judge_semaphore: threading.BoundedSemaphore | None = None
+_deep_semaphore: threading.BoundedSemaphore | None = None
+_client_cache: object | None = None
+_client_cache_key: tuple | None = None
+_deep_client_cache: object | None = None
+_deep_client_cache_key: tuple | None = None
+
+
+def judge_concurrency() -> int:
+    """小模型（杏仁核）并发上限，默认 5。"""
+    return int(get_detection_config().get("judge_concurrency", 5))
+
+
+def deep_concurrency() -> int:
+    """大模型（系统2）并发上限，默认 2。"""
+    return int(get_detection_config().get("deep_concurrency", 2))
+
+
+def _get_judge_semaphore() -> threading.BoundedSemaphore:
+    global _judge_semaphore
+    if _judge_semaphore is None:
+        _judge_semaphore = threading.BoundedSemaphore(judge_concurrency())
+    return _judge_semaphore
+
+
+def _get_deep_semaphore() -> threading.BoundedSemaphore:
+    global _deep_semaphore
+    if _deep_semaphore is None:
+        _deep_semaphore = threading.BoundedSemaphore(deep_concurrency())
+    return _deep_semaphore
 
 
 def _read(path: Path, default):
@@ -129,6 +164,8 @@ def get_detection_config() -> dict:
         "mock_base": cfg.get("mock_base", 0.32),
         "mock_ceiling": cfg.get("mock_ceiling", 0.72),
         "mock_cutoff": cfg.get("mock_cutoff", 0.5),
+        "judge_concurrency": cfg.get("judge_concurrency", 5),
+        "deep_concurrency": cfg.get("deep_concurrency", 2),
     }
 
 
@@ -182,45 +219,63 @@ def get_client():
     """按运行时模式 + 模型配置选系统1（杏仁核）客户端，syslog 流式与 HTTP 入库读同一份。
 
     auto=按有无 key 决定；mock=强制零成本 mock；real=强制真实（无 key 退回 mock）。
+    单例缓存：复用底层 httpx 连接池，配置指纹变化才重建（热生效），并发受信号量限制。
     """
+    global _client_cache, _client_cache_key
     llm.load_dotenv()  # 把 .env 填进 os.environ（只补缺），作为 model.json 空值时的 fallback
     mode = get_model_mode()
-    if mode == "mock":
-        return _mock_client()
     m = get_model_config()
     api_key = m.get("api_key") or os.environ.get("NEUROIMMUNE_API_KEY", "").strip()
-    if not api_key:
-        return _mock_client()  # auto 或 real 都没 key → 退回 mock
-    return llm.OpenAICompatClient(
-        base_url=m.get("base_url") or os.environ.get("NEUROIMMUNE_BASE_URL", "https://api.deepseek.com/v1"),
-        api_key=api_key,
-        model=m.get("model") or os.environ.get("NEUROIMMUNE_MODEL", "deepseek-chat"),
-        temperature=m.get("temperature", 0.0),
-        timeout=m.get("timeout", 120),
-    )
+    key = (mode, api_key, m.get("base_url"), m.get("model"),
+           m.get("temperature"), m.get("timeout"))
+    if _client_cache is not None and _client_cache_key == key:
+        return _client_cache
+    if mode == "mock" or not api_key:
+        client = _mock_client()  # auto 或 real 都没 key → 退回 mock
+    else:
+        client = llm.OpenAICompatClient(
+            base_url=m.get("base_url") or os.environ.get("NEUROIMMUNE_BASE_URL", "https://api.deepseek.com/v1"),
+            api_key=api_key,
+            model=m.get("model") or os.environ.get("NEUROIMMUNE_MODEL", "deepseek-chat"),
+            temperature=m.get("temperature", 0.0),
+            timeout=m.get("timeout", 120),
+            max_connections=judge_concurrency(),
+            semaphore=_get_judge_semaphore(),
+        )
+    _client_cache = client
+    _client_cache_key = key
+    return client
 
 
 def get_deep_client():
-    """按运行时模式 + 模型配置选系统2（深想）客户端。"""
+    """按运行时模式 + 模型配置选系统2（深想）客户端。单例缓存，配置变化才重建。"""
+    global _deep_client_cache, _deep_client_cache_key
     llm.load_dotenv()
     mode = get_model_mode()
-    if mode == "mock":
-        return _mock_client()
     m = get_model_config()
     api_key = (m.get("deep_api_key") or m.get("api_key")
                or os.environ.get("NEUROIMMUNE_DEEP_API_KEY", "").strip()
                or os.environ.get("NEUROIMMUNE_API_KEY", "").strip())
-    if not api_key:
-        return _mock_client()
-    return llm.OpenAICompatClient(
-        base_url=(m.get("deep_base_url") or m.get("base_url")
-                  or os.environ.get("NEUROIMMUNE_DEEP_BASE_URL", "").strip()
-                  or os.environ.get("NEUROIMMUNE_BASE_URL", "https://api.deepseek.com/v1")),
-        api_key=api_key,
-        model=m.get("deep_model") or os.environ.get("NEUROIMMUNE_DEEP_MODEL", "deepseek-reasoner"),
-        temperature=None,  # 推理模型不支持 temperature
-        timeout=m.get("timeout", 120),
-    )
+    key = (mode, api_key, m.get("deep_base_url"), m.get("deep_model"), m.get("timeout"))
+    if _deep_client_cache is not None and _deep_client_cache_key == key:
+        return _deep_client_cache
+    if mode == "mock" or not api_key:
+        client = _mock_client()
+    else:
+        client = llm.OpenAICompatClient(
+            base_url=(m.get("deep_base_url") or m.get("base_url")
+                      or os.environ.get("NEUROIMMUNE_DEEP_BASE_URL", "").strip()
+                      or os.environ.get("NEUROIMMUNE_BASE_URL", "https://api.deepseek.com/v1")),
+            api_key=api_key,
+            model=m.get("deep_model") or os.environ.get("NEUROIMMUNE_DEEP_MODEL", "deepseek-reasoner"),
+            temperature=None,  # 推理模型不支持 temperature
+            timeout=m.get("timeout", 120),
+            max_connections=deep_concurrency(),
+            semaphore=_get_deep_semaphore(),
+        )
+    _deep_client_cache = client
+    _deep_client_cache_key = key
+    return client
 
 
 def get_gating_config() -> dict:
