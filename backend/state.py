@@ -19,7 +19,7 @@ import llm
 
 from paths import (
     KNOB_PATH, PRESETS_PATH, FREQ_PATH, MODE_PATH, GATING_PATH,
-    MODEL_PATH, DETECTION_PATH, INGEST_PATH,
+    MODEL_PATH, DETECTION_PATH, INGEST_PATH, data_dir,
 )
 
 _DEFAULT = "正常"
@@ -291,11 +291,19 @@ def set_gating_config(single_signal_floor: float, budget_window: int) -> None:
     )
 
 
-# ---- syslog 来源映射（prototype/syslog_sources.json，syslog.py 也读它）----
-SOURCES_PATH = Path(__file__).resolve().parent.parent / "prototype" / "syslog_sources.json"
+# ---- syslog 来源映射 ----
+# 统一持久化到数据目录（Docker 下在 /data 卷，重启不丢）；prototype 独立跑时仍读
+# prototype/syslog_sources.json 作为默认种子。
+_PROTO_SOURCES_PATH = Path(__file__).resolve().parent.parent / "prototype" / "syslog_sources.json"
+SOURCES_PATH = data_dir() / "syslog_sources.json"
 
 
 def get_sources_config() -> dict:
+    # 首次迁移：数据目录还没有映射文件时，从 prototype 默认文件播种一份，保留既有配置
+    if not SOURCES_PATH.exists():
+        seed = _read(_PROTO_SOURCES_PATH, {"facility": {}, "hostname": {}, "tag": {}, "ip": {}})
+        SOURCES_PATH.write_text(json.dumps(seed, ensure_ascii=False, indent=2), encoding="utf-8")
+        return seed
     return _read(SOURCES_PATH, {"facility": {}, "hostname": {}, "tag": {}, "ip": {}})
 
 

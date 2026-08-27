@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { toast } from '../toast';
 import { Field } from '../components/Field';
-import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig } from '../types';
+import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig, SourceStatus } from '../types';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
 
@@ -25,7 +25,6 @@ const SECTIONS = [
   { id: 'gating', label: '前额叶 唤醒门槛' },
   { id: 'detection', label: '检测调参' },
   { id: 'ingest', label: '数据接入（syslog）' },
-  { id: 'sources', label: 'syslog 来源映射' },
   { id: 'webhooks', label: '案件外发（Webhook）' },
 ];
 
@@ -61,6 +60,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [detection, setDetection] = useState<DetectionConfig | null>(null);
   const [ingest, setIngest] = useState<IngestConfig | null>(null);
   const [sources, setSources] = useState<SourcesConfig | null>(null);
+  const [sourceStatus, setSourceStatus] = useState<SourceStatus[] | null>(null);
   const [webhooks, setWebhooks] = useState<WebhookConfig[] | null>(null);
   const [whName, setWhName] = useState('');
   const [whUrl, setWhUrl] = useState('');
@@ -79,6 +79,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     api.detection().then(setDetection);
     api.ingest().then(setIngest);
     api.sources().then(setSources);
+    api.sourceStatus().then((r) => setSourceStatus(r.items));
     api.webhooks().then((r) => setWebhooks(r.items));
   };
   useEffect(load, []);
@@ -294,15 +295,23 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                 </>
               )}
               <p className="muted" style={{ marginTop: 8 }}>syslog 地址/端口改后需重启后端；巩固间隔、保留天数与 API token 下个周期生效。保留天数：告警超期先归档到 archive/ 再删除，案件/报告留更久。</p>
-            </div>
-          )}
-
-          {section === 'sources' && (
-            <div className="card">
-              <div className="sec-label">syslog 来源映射</div>
-              <p className="muted">优先级 ip &gt; tag &gt; hostname &gt; facility，子串匹配；ip 可为完整地址或网段前缀（如 10.20.）。</p>
+              {sourceStatus && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>已配置来源</div>
+                  <div className="chips">
+                    {sourceStatus.map((s) => (
+                      <span key={s.source} className="chip">
+                        {s.source}：{s.count ? `${s.count} 条告警 · 最近 ${new Date(s.last_seen_ts! * 1000).toLocaleString()}` : '暂无数据'}
+                      </span>
+                    ))}
+                    {sourceStatus.length === 0 && <span className="muted">尚未配置任何来源</span>}
+                  </div>
+                </div>
+              )}
               {sources && (
                 <>
+                  <div className="sec-label" style={{ marginTop: 16 }}>来源映射</div>
+                  <p className="muted">优先级 ip &gt; tag &gt; hostname &gt; facility，子串匹配；ip 可为完整地址或网段前缀（如 10.20.）。</p>
                   <div className="grid g2" style={{ marginTop: 10 }}>
                     <div>
                       <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>ip（来源地址）</div>

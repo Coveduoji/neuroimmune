@@ -437,6 +437,31 @@ def get_distinct_sources() -> list[str]:
         return [r["source"] for r in c.execute("SELECT DISTINCT source FROM alerts WHERE source != ''").fetchall()]
 
 
+def get_source_stats() -> list[dict]:
+    """每个来源的接入现状：告警数 / 上板 / 抑制 / 最近入库（epoch 秒）。
+
+    last_seen_ts 直接在 SQL 里转 epoch，避免 Python 解析时间串；旧行 created_at 为空时返回 None。
+    """
+    q = (
+        "SELECT source, COUNT(*) AS count, "
+        "SUM(suppressed=0) AS surfaced, SUM(suppressed=1) AS suppressed, "
+        "MAX(CASE WHEN created_at != '' THEN strftime('%s', created_at) END) AS last_seen_ts "
+        "FROM alerts WHERE source != '' GROUP BY source"
+    )
+    with _conn() as c:
+        rows = [dict(r) for r in c.execute(q).fetchall()]
+    return [
+        {
+            "source": r["source"],
+            "count": r["count"],
+            "surfaced": r["surfaced"] or 0,
+            "suppressed": r["suppressed"] or 0,
+            "last_seen_ts": int(r["last_seen_ts"]) if r["last_seen_ts"] else None,
+        }
+        for r in rows
+    ]
+
+
 def _alert_where(source: str | None):
     q = ""
     args = []

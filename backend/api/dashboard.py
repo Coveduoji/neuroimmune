@@ -352,6 +352,20 @@ def set_sources(body: dict):
     return state.set_sources_config(body)
 
 
+@router.get("/sources/status")
+def source_status():
+    """接入现状：按来源映射配置列出已配置来源，附带告警数 / 最近入库时间。"""
+    cfg = state.get_sources_config()
+    configured = sorted({
+        v for sec in ("facility", "hostname", "tag", "ip")
+        for v in (cfg.get(sec) or {}).values() if v
+    })
+    stats = {s["source"]: s for s in db.get_source_stats()}
+    empty = {"count": 0, "surfaced": 0, "suppressed": 0, "last_seen_ts": None}
+    items = [{"source": name, **{**empty, **stats.get(name, {})}} for name in configured]
+    return {"items": items}
+
+
 @router.post("/report/export")
 def export_report(body: dict):
     """按筛选条件导出报告（docx / md / html）。body: {format, start, end, source, verdict, status}。"""

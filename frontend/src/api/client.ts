@@ -102,6 +102,7 @@ export const api = {
   sources: () => j<import('../types').SourcesConfig>('/sources'),
   setSources: (body: object) =>
     j<import('../types').SourcesConfig>(`/sources`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  sourceStatus: () => j<{ items: import('../types').SourceStatus[] }>('/sources/status'),
   toleranceRemove: (signature: string) =>
     j(`/tolerance/remove`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature }) }),
   toleranceClear: () => j(`/tolerance/clear`, { method: 'POST' }),

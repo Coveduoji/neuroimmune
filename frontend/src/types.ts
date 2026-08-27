@@ -176,6 +176,14 @@ export interface SourcesConfig {
   ip: Record<string, string>;
 }
 
+export interface SourceStatus {
+  source: string;
+  count: number;
+  surfaced: number;
+  suppressed: number;
+  last_seen_ts: number | null;
+}
+
 export interface WebhookConfig {
   name: string;
   url: string;
