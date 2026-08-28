@@ -11,6 +11,7 @@ backend/secret.key
 *.db-wal
 *.sqlite
 backend/data/feedback.jsonl
+backend/data/memory.jsonl
 
 # === 运行时配置（UI 可改、可能含密钥）===
 backend/*.json
