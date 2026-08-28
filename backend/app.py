@@ -73,7 +73,7 @@ def _consolidate_loop() -> None:
         try:
             import nightly
             r = nightly.consolidate()
-            logger.info("夜间巩固 %s，新固有免疫规则 %s 条", r.get("status"), len(r.get("new_rules", [])))
+            logger.info("夜间巩固 %s，摘要 %s", r.get("status"), r.get("memory") or "—")
         except Exception:
             logger.exception("夜间巩固失败")
         try:

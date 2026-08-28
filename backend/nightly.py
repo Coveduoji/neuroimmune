@@ -1,11 +1,13 @@
-"""夜间巩固（睡眠巩固）——定时从 SQLite 蒸馏，把一天的案件沉淀成记忆 + 回写固有免疫。
+"""夜间巩固（睡眠巩固）——定时从 SQLite 蒸馏，把一天的案件沉淀成检索记忆。
 
-对应 README 第 5 步。和 prototype/consolidate.py 的区别：这里直接读后端的 SQLite
-（流式入库的案件），不读批处理的 history.jsonl。两个去向：
-(a) 检索记忆 memory.jsonl —— 供系统2 调查时 RAG 检索；
-(b) 回写固有免疫 —— 强度越线且非误报的案件 (asset, type) 蒸馏成规则，边缘秒拦。
+对应 README 的「记忆」层。和 prototype/consolidate.py 的区别：这里直接读后端的 SQLite
+（流式入库的案件），不读批处理的 history.jsonl。只做一件事：把当天案件用深想模型蒸馏成
+{summary, ttps, false_positives}，追加到 memory.jsonl，供系统2 调查时 RAG 检索。
 
-注意：模块名用 nightly，避开 prototype/consolidate.py 的同名冲突。
+注意：
+- 固有免疫规则**不**由夜间巩固回写——规则只由分析师「标记真阳性」写入
+  （backend/api/cases.py 的 true_positive），避免未确认的误报被永久写进「已知坏」。
+- 模块名用 nightly，避开 prototype/consolidate.py 的同名冲突。
 """
 from __future__ import annotations
 
