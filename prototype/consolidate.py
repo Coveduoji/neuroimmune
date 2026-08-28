@@ -15,6 +15,7 @@ import os
 import innate
 from amygdala import _extract_json
 from llm import get_deep_client
+from signature import signature
 
 HISTORY_PATH = os.path.join(os.path.dirname(__file__), "data", "history.jsonl")
 MEMORY_PATH = os.path.join(os.path.dirname(__file__), "data", "memory.jsonl")
@@ -67,16 +68,13 @@ def main() -> None:
         return
     _append_memory(record)
 
-    # 回写固有免疫规则：被顶出且非误报的事件 → 提炼成 (asset, type) 规则
-    rules = innate.load_rules()
+    # 回写固有免疫规则：被顶出且非误报的事件 → 提炼成签名字符串（与 backend 一致）
     malicious = [
-        (e["asset"], e["type"])
+        signature(e["source"], e["type"], e["raw"], e["asset"])
         for e in events
         if e.get("escalated") and e.get("label") != "benign"
     ]
-    new_rules = innate.add(rules, malicious)
-    if new_rules:
-        innate.save_rules(rules)
+    new_rules = innate.add_signatures(malicious)
 
     print("【记忆】summary：", record.get("summary"))
     print("【记忆】TTPs：", record.get("ttps"))
@@ -84,7 +82,7 @@ def main() -> None:
     print("-" * 64)
     print(f"检索记忆已追加 → data/memory.jsonl")
     print(f"固有免疫新规则 : {new_rules or '（无新增）'} → data/innate_rules.json")
-    print("下次 main.py 遇到这些 (asset, type) 会边缘秒拦，连杏仁核都不用叫。")
+    print("下次 main.py 遇到这些签名会边缘秒拦，连杏仁核都不用叫。")
 
 
 if __name__ == "__main__":
