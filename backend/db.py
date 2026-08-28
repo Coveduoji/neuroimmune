@@ -316,7 +316,7 @@ def insert_audit(action: str, entity: str, changes: str) -> None:
 
 # ---- 查询 ----
 
-def _case_filter(status=None, verdict=None, severity=None, pending=False):
+def _case_filter(status=None, verdict=None, severity=None, pending=False, query=None):
     q = " WHERE 1=1"
     args = []
     if status:
@@ -330,19 +330,24 @@ def _case_filter(status=None, verdict=None, severity=None, pending=False):
     if severity:
         q += " AND severity=?"
         args.append(severity)
+    if query:
+        like = f"%{query}%"
+        q += " AND (correlation_uid LIKE ? OR title LIKE ? OR entity_summary LIKE ?)"
+        args += [like, like, like]
     return q, args
 
 
-def list_cases(status=None, verdict=None, severity=None, pending=False, limit=50, offset=0) -> list[dict]:
-    fq, args = _case_filter(status, verdict, severity, pending)
-    q = f"SELECT * FROM cases{fq} ORDER BY strength DESC, id DESC LIMIT ? OFFSET ?"
+def list_cases(status=None, verdict=None, severity=None, pending=False, query=None,
+               limit=50, offset=0) -> list[dict]:
+    fq, args = _case_filter(status, verdict, severity, pending, query)
+    sql = f"SELECT * FROM cases{fq} ORDER BY strength DESC, id DESC LIMIT ? OFFSET ?"
     with _conn() as c:
-        rows = c.execute(q, args + [limit, offset]).fetchall()
+        rows = c.execute(sql, args + [limit, offset]).fetchall()
         return [_case_row(r) for r in rows]
 
 
-def count_cases(status=None, verdict=None, severity=None, pending=False) -> int:
-    fq, args = _case_filter(status, verdict, severity, pending)
+def count_cases(status=None, verdict=None, severity=None, pending=False, query=None) -> int:
+    fq, args = _case_filter(status, verdict, severity, pending, query)
     with _conn() as c:
         return c.execute(f"SELECT COUNT(*) AS c FROM cases{fq}", args).fetchone()["c"]
 

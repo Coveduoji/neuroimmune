@@ -22,6 +22,7 @@ export default function Triage({ onOpen }: { onOpen: (id: number) => void }) {
   const [status, setStatus] = useState('');
   const [verdict, setVerdict] = useState('');
   const [pending, setPending] = useState(true);
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -30,6 +31,7 @@ export default function Triage({ onOpen }: { onOpen: (id: number) => void }) {
     if (status) params.set('status', status);
     if (verdict) params.set('verdict', verdict);
     if (pending) params.set('pending', '1');
+    if (q.trim()) params.set('q', q.trim());
     params.set('limit', String(PAGE_SIZE));
     params.set('offset', String(page * PAGE_SIZE));
     api.listCases(params.toString())
@@ -41,7 +43,7 @@ export default function Triage({ onOpen }: { onOpen: (id: number) => void }) {
     const t = setInterval(refresh, 15000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, verdict, pending, page]);
+  }, [status, verdict, pending, q, page]);
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -65,6 +67,8 @@ export default function Triage({ onOpen }: { onOpen: (id: number) => void }) {
         <h2>{t('triage')}</h2>
         <span className="sub">{total} 个案件 · 按强度排序</span>
         <div style={{ flex: 1 }} />
+        <input type="text" placeholder="搜索案件 ID / 标题 / 实体…" value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(0); }} style={{ width: 220 }} />
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
           <input type="checkbox" checked={pending} onChange={(e) => { setPending(e.target.checked); setPage(0); }} />
           只看待处理
