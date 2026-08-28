@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { toast } from '../toast';
 import { Field } from '../components/Field';
-import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig, SourceStatus } from '../types';
+import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig, SourceStatus, ParsersConfig } from '../types';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
 
@@ -61,6 +61,11 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [ingest, setIngest] = useState<IngestConfig | null>(null);
   const [sources, setSources] = useState<SourcesConfig | null>(null);
   const [sourceStatus, setSourceStatus] = useState<SourceStatus[] | null>(null);
+  const [parsers, setParsers] = useState<ParsersConfig | null>(null);
+  const [parserSource, setParserSource] = useState('');
+  const [parserSamples, setParserSamples] = useState('');
+  const [parserPreview, setParserPreview] = useState('');
+  const [parserGenerating, setParserGenerating] = useState(false);
   const [webhooks, setWebhooks] = useState<WebhookConfig[] | null>(null);
   const [whName, setWhName] = useState('');
   const [whUrl, setWhUrl] = useState('');
@@ -80,6 +85,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     api.ingest().then(setIngest);
     api.sources().then(setSources);
     api.sourceStatus().then((r) => setSourceStatus(r.items));
+    api.parsers().then(setParsers);
     api.webhooks().then((r) => setWebhooks(r.items));
   };
   useEffect(load, []);
@@ -126,6 +132,37 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     }
     setSources(await api.setSources(clean));
     toast('已保存来源映射');
+  };
+
+  const generateParser = async () => {
+    if (!parserSource.trim() || !parserSamples.trim()) { toast('请填来源名和样本'); return; }
+    setParserGenerating(true);
+    try {
+      const r = await api.generateParsers({
+        source: parserSource.trim(),
+        samples: parserSamples.split('\n').map((l) => l.trim()).filter(Boolean),
+      });
+      setParserPreview(JSON.stringify(r.config, null, 2));
+    } catch (e: any) {
+      toast('生成失败：' + (e?.message || e));
+    } finally {
+      setParserGenerating(false);
+    }
+  };
+
+  const saveParsers = async () => {
+    if (!parserSource.trim() || !parserPreview.trim()) { toast('请先填来源名并生成解析配置'); return; }
+    let cfg: any;
+    try { cfg = JSON.parse(parserPreview); } catch { toast('预览不是合法 JSON'); return; }
+    setParsers(await api.setParsers({ ...(parsers || {}), [parserSource.trim()]: cfg }));
+    toast('已保存解析配置');
+  };
+
+  const removeSourceParser = async (source: string) => {
+    const next = { ...(parsers || {}) };
+    delete next[source];
+    setParsers(await api.setParsers(next));
+    toast('已删除解析配置');
   };
 
   const toggleField = (f: string) => setWhFields((s) => (s.includes(f) ? s.filter((x) => x !== f) : [...s, f]));
@@ -333,6 +370,40 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                   </div>
                   <button className="btn primary" onClick={saveSources} style={{ marginTop: 12 }}>保存来源映射</button>
                 </>
+              )}
+
+              <div className="sec-label" style={{ marginTop: 16 }}>来源解析（精确实体）</div>
+              <p className="muted">为来源配置解析规则：LLM 从样本生成，人工确认后保存；运行时确定性解析、精确实体拼链（消除版本号误抽）。</p>
+              {parsers && Object.keys(parsers).length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {Object.keys(parsers).map((src) => (
+                    <div key={src} className="alert-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <code>{src}（{parsers[src].parsers?.length ?? 0} 条规则）</code>
+                      <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeSourceParser(src)}>删</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="field-row" style={{ marginTop: 10 }}>
+                <Field label="来源名"><input value={parserSource} placeholder="天眼" onChange={(e) => setParserSource(e.target.value)} /></Field>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>样本日志（每行一条，2~5 条即可）</div>
+                <textarea value={parserSamples} placeholder={'webids_alert|!V3ee8315f|!26843s612|!dedecms XSS|!...'}
+                  onChange={(e) => setParserSamples(e.target.value)} style={{ width: '100%', minHeight: 72, fontFamily: 'monospace' }} />
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <button className="btn primary" onClick={generateParser} disabled={parserGenerating}>
+                  {parserGenerating ? '生成中…' : '生成解析配置'}
+                </button>
+              </div>
+              {parserPreview && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>预览（可编辑，确认后保存）</div>
+                  <textarea value={parserPreview} onChange={(e) => setParserPreview(e.target.value)}
+                    style={{ width: '100%', minHeight: 160, fontFamily: 'monospace' }} />
+                  <button className="btn primary" onClick={saveParsers} style={{ marginTop: 8 }}>保存解析配置</button>
+                </div>
               )}
             </div>
           )}

@@ -256,7 +256,11 @@ def process_signal(signal: dict, knob_name: str | None = None) -> dict:
             confidence=v.confidence, raw=signal["raw"], reason=v.reason,
         )
 
-    ents = artifact.extract_entities({"asset": e.asset, "raw": e.raw})
+    # 精确实体优先：配置解析已抽出源/目的 IP 等，直接用（消除正则误抽）；否则正则兜底。
+    if signal.get("entities"):
+        ents = [artifact.Entity(x["type"], x["value"]) for x in signal["entities"]]
+    else:
+        ents = artifact.extract_entities({"asset": e.asset, "raw": e.raw})
 
     # 归案 + 写库在全局锁内串行（并发 worker 下避免重复建案/撞 UNIQUE）。
     # 模型调用（amygdala.judge）在锁外，锁内只有毫秒级 DB 读写，不构成瓶颈。

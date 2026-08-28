@@ -380,6 +380,68 @@ def source_status():
     return {"items": items}
 
 
+# ---- 来源解析配置（方案 C：LLM 生成规则 + 运行时确定性解析）----
+
+GENERATE_PARSER_SYSTEM = (
+    "你是日志解析配置生成器。给你一个安全设备的原始告警日志样本（可能多条、格式相同或不同），"
+    "分析格式并生成解析配置 JSON，把告警解析成统一结构。\n"
+    "支持两种解析类型：\n"
+    "- dissect：定长字段，用 delimiter 分隔，按 fields 列表顺序一一映射字段名；\n"
+    "- kv：key/value 对，field_split 分键值对、value_split 分键值。\n"
+    "若日志带标准 syslog 头（如 'Jul 17 11:24:08 host tag:'），配置里加 \"strip_syslog\": true。\n"
+    "输出一个 JSON 对象：\n"
+    "{\n"
+    "  \"strip_syslog\": true 或 false（可选，带 syslog 头才加）,\n"
+    "  \"parsers\": [\n"
+    "    {\n"
+    "      \"match\": \"startswith:<首字段前缀>\",\n"
+    "      \"type\": \"dissect 或 kv\",\n"
+    "      \"delimiter\": \"...\"（dissect 用）,\n"
+    "      \"fields\": [\"字段名\", ...]（dissect 用，顺序必须与样本一致）,\n"
+    "      \"field_split\": \"...\", \"value_split\": \"...\"（kv 用）,\n"
+    "      \"map\": {\n"
+    "        \"time\": \"时间字段名\",\n"
+    "        \"type\": \"告警类型字段名\",\n"
+    "        \"asset\": \"受害/资产字段名（通常是目的 IP 或服务器 IP）\",\n"
+    "        \"entities\": [[\"源IP字段\",\"ip\"],[\"目的IP字段\",\"ip\"],[\"文件hash字段\",\"hash\"],[\"域名字段\",\"domain\"]]\n"
+    "      }\n"
+    "    }\n"
+    "  ]\n"
+    "}\n"
+    "规则：fields 顺序必须与样本严格一致；entities 只放关键实体字段（源/目的 IP、文件 hash、域名），"
+    "不要把版本号、端口、UA 当实体；时间字段可能是不带单位的 Unix 秒/毫秒或 ISO 字符串，原样填字段名即可。"
+    "只输出 JSON，不要其他文字。"
+)
+
+
+@router.get("/parsers")
+def get_parsers():
+    return state.get_parsers_config()
+
+
+@router.put("/parsers", dependencies=[Depends(auth.require_perm("config"))])
+def set_parsers(body: dict):
+    return state.set_parsers_config(body)
+
+
+@router.post("/parsers/generate", dependencies=[Depends(auth.require_perm("config"))])
+def generate_parsers(body: dict):
+    """LLM 从样本生成解析配置（预览，不落盘）。body: {source, samples:[...]}。"""
+    from amygdala import _extract_json
+    source = (body or {}).get("source", "").strip()
+    samples = (body or {}).get("samples", [])
+    if not source or not samples:
+        raise HTTPException(400, "source 和 samples 必填")
+    prompt = (GENERATE_PARSER_SYSTEM + "\n\n来源名：" + source
+              + "\n样本日志：\n" + json.dumps(samples, ensure_ascii=False, indent=2))
+    raw = state.get_deep_client().analyze(prompt)
+    try:
+        cfg = _extract_json(raw)
+    except ValueError as e:
+        raise HTTPException(502, f"模型没输出合法 JSON：{e}")
+    return {"config": cfg}
+
+
 @router.post("/report/export")
 def export_report(body: dict):
     """按筛选条件导出报告（docx / md / html）。body: {format, start, end, source, verdict, status}。"""

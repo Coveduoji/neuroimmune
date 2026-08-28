@@ -103,6 +103,11 @@ export const api = {
   setSources: (body: object) =>
     j<import('../types').SourcesConfig>(`/sources`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   sourceStatus: () => j<{ items: import('../types').SourceStatus[] }>('/sources/status'),
+  parsers: () => j<import('../types').ParsersConfig>('/parsers'),
+  setParsers: (body: object) =>
+    j<import('../types').ParsersConfig>(`/parsers`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  generateParsers: (body: object) =>
+    j<{ config: import('../types').SourceParserConfig }>(`/parsers/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   toleranceRemove: (signature: string) =>
     j(`/tolerance/remove`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature }) }),
   toleranceClear: () => j(`/tolerance/clear`, { method: 'POST' }),

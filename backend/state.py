@@ -311,3 +311,17 @@ def get_sources_config() -> dict:
 def set_sources_config(cfg: dict) -> dict:
     SOURCES_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     return cfg
+
+
+# ---- syslog 解析配置（方案 C：来源 → parser 规则，LLM 生成 + 人工确认后落盘）----
+PARSERS_PATH = data_dir() / "syslog_parsers.json"
+
+
+def get_parsers_config() -> dict:
+    """读来源解析配置 {来源名: {strip_syslog?, parsers: [...]}}，无则空。"""
+    return _read(PARSERS_PATH, {})
+
+
+def set_parsers_config(cfg: dict) -> dict:
+    PARSERS_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    return cfg

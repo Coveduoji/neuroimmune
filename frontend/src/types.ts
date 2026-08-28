@@ -185,6 +185,30 @@ export interface SourceStatus {
   last_seen_ts: number | null;
 }
 
+export interface ParserRule {
+  match: string;
+  type: string;
+  delimiter?: string;
+  field_split?: string;
+  value_split?: string;
+  fields?: string[];
+  map: {
+    time?: string;
+    type?: string;
+    asset?: string;
+    entities?: [string, string][];
+  };
+}
+
+export interface SourceParserConfig {
+  strip_syslog?: boolean;
+  parsers: ParserRule[];
+}
+
+export interface ParsersConfig {
+  [source: string]: SourceParserConfig;
+}
+
 export interface WebhookConfig {
   name: string;
   url: string;

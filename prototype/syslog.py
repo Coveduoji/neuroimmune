@@ -15,6 +15,8 @@ import json
 import os
 import re
 
+import parsers
+
 # 标准 facility 编码（RFC 3164 / 5424）
 FACILITY = {
     0: "kern", 1: "user", 2: "mail", 3: "daemon", 4: "auth", 5: "syslog",
@@ -36,10 +38,25 @@ _SOURCE = {
 
 _SOURCES_PATH = os.path.join(os.path.dirname(__file__), "syslog_sources.json")
 
+# 解析配置路径：backend 启动时注入数据目录下的 syslog_parsers.json；
+# prototype 独立跑时保持 None → 配置解析不启用，走 RFC + 兜底。
+_PARSERS_PATH = None
+
 
 def _load_sources() -> dict:
     try:
         with open(_SOURCES_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _load_parsers() -> dict:
+    if not _PARSERS_PATH:
+        return {}
+    try:
+        with open(_PARSERS_PATH, encoding="utf-8") as f:
             data = json.load(f)
         return data if isinstance(data, dict) else {}
     except Exception:
@@ -82,7 +99,7 @@ def _build(time: str, host: str, fac: str, tag: str, msg: str, src_ip: str = "")
     return {
         "time": time or "-",
         "source": _source(fac, host, tag, src_ip),
-        "asset": host or "localhost",
+        "asset": host or "",
         "type": fac,
         "raw": msg,
     }
@@ -127,19 +144,33 @@ def _parse_3164(rest: str, fac: str, src_ip: str = "") -> dict | None:
 def parse_line(line: str, src_ip: str = "") -> dict | None:
     """解析一行 syslog → 信号 dict；解析不出返回 None。
 
-    src_ip 是网络发送方 IP（syslog 接收端从 UDP/TCP 对端地址捕获），
-    用于「来源 IP → 来源名」映射（如 1.2.3.4 → 天眼）。
+    src_ip 是网络发送方 IP（传输层对端地址），只用于「来源 IP → 来源名」映射
+    （如 1.2.3.4 → 天眼），与告警消息体里的源 IP 字段无关。
     """
     line = line.strip()
     if not line:
         return None
+
+    # 方案 C：识别来源（有 syslog 头用 host/tag，无头用 ip 映射），命中配置就走配置解析。
+    host = tag = ""
+    hm = re.match(r"^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+(\S+)\s+(\S+):", line)
+    if hm:
+        host, tag = hm.group(1), hm.group(2)
+    src_name = _source("", host, tag, src_ip)
+    cfg = _load_parsers().get(src_name)
+    if cfg:
+        body = parsers.strip_syslog_header(line) if cfg.get("strip_syslog") else line
+        sig = parsers.parse_configured(body, line, src_name, cfg)
+        if sig is not None:
+            return sig
+
     pri, rest = _extract_pri(line)
     fac = FACILITY.get(pri // 8, "user") if pri is not None else "user"
     # RFC5424：PRI 后紧跟版本号（纯数字）
     if re.match(r"^\d+\s", rest):
         rest = rest.split(" ", 1)[1]
         return _parse_5424(rest, fac, src_ip)
-    # RFC3164：要么有 PRI，要么有可识别的 "Mmm dd hh:mm:ss" 时间戳，否则不算 syslog
+    # RFC3164：有 PRI 或可识别的 "Mmm dd hh:mm:ss" 时间戳；都不是则兜底存 raw（不丢弃）。
     if pri is None and not re.match(r"^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}", rest):
-        return None
+        return _build("", "", "syslog", "", line, src_ip)
     return _parse_3164(rest, fac, src_ip)
