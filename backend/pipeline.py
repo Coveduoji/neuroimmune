@@ -85,6 +85,7 @@ def process(signals: list[dict], knob_name: str = "正常") -> dict:
     deep_client = state.get_deep_client()
     tol = tolerance.load_tolerance()
     rules = innate.load_rules()
+    ttl = d["tolerance_ttl_days"] * 86400  # 白名单 TTL（秒），0=永久
 
     events: list[blackboard.Event] = []
     suppressed: list[dict] = []
@@ -92,16 +93,17 @@ def process(signals: list[dict], knob_name: str = "正常") -> dict:
 
     for sig in signals:
         total += 1
-        if tolerance.is_tolerated(sig, tol):
-            tol_suppressed += 1
-            suppressed.append({**sig, "confidence": None, "why": "免疫耐受：已知好，白名单降级"})
-            continue
+        # 黑名单优先于白名单：宁可多报不可漏（签名若同时命中黑白名单，走秒拦而非静默）。
         if innate.match(sig, rules):
             innate_hits += 1
             events.append(blackboard.Event(
                 time=sig["time"], source=sig["source"], asset=sig["asset"], etype=sig["type"],
                 confidence=d["innate_conf"], raw=sig["raw"], reason="固有免疫秒拦：已知攻击家族", innate=True,
             ))
+            continue
+        if tolerance.is_tolerated(sig, tol, ttl):
+            tol_suppressed += 1
+            suppressed.append({**sig, "confidence": None, "why": "免疫耐受：已知好，白名单降级"})
             continue
         v = amygdala.judge_signal(sig, client)
         if v.confidence < knob.suppress_below:
@@ -213,19 +215,20 @@ def process_signal(signal: dict, knob_name: str | None = None) -> dict:
     deep_client = state.get_deep_client()
     tol = tolerance.load_tolerance()
     rules = innate.load_rules()
+    ttl = d["tolerance_ttl_days"] * 86400  # 白名单 TTL（秒），0=永久
 
     def _suppress(why: str, confidence=None) -> dict:
         db.insert_suppressed_alert({**signal, "confidence": confidence}, why)
         return {"status": "suppressed", "why": why}
 
-    if tolerance.is_tolerated(signal, tol):
-        return _suppress("免疫耐受：已知好，白名单降级")
-
+    # 黑名单优先于白名单：宁可多报不可漏（签名若同时命中黑白名单，走秒拦而非静默）。
     if innate.match(signal, rules):
         e = blackboard.Event(
             time=signal["time"], source=signal["source"], asset=signal["asset"], etype=signal["type"],
             confidence=d["innate_conf"], raw=signal["raw"], reason="固有免疫秒拦：已知攻击家族", innate=True,
         )
+    elif tolerance.is_tolerated(signal, tol, ttl):
+        return _suppress("免疫耐受：已知好，白名单降级")
     else:
         v = amygdala.judge_signal(signal, client)
         # 频率降级：时间窗外历史同类型告警极多 → 很可能业务误报，降级并写记忆

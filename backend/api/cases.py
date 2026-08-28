@@ -30,16 +30,16 @@ def list_cases(status: str | None = None, verdict: str | None = None, severity: 
 def bulk_false_positive(body: dict):
     """批量标记误报：多个案件一次性回写免疫耐受。"""
     case_ids = (body or {}).get("case_ids", [])
-    tol = tolerance.load_tolerance()
     learned_all = []
     for cid in case_ids:
         if not db.get_case(cid):
             continue
-        keys = [signature(a["source"], a["type"], a["raw"]) for a in db.get_case_alerts(cid)]
-        learned_all.extend(tolerance.learn(tol, keys))
+        keys = [signature(a["source"], a["type"], a["raw"], a["asset"]) for a in db.get_case_alerts(cid)]
+        learned = tolerance.learn_signatures(keys)
+        learned_all.extend(learned)
         db.patch_case(cid, {"verdict": "False Positive", "status": "Closed"})
-    if learned_all:
-        tolerance.save_tolerance(tol)
+        db.insert_audit("bulk_false_positive", f"case {cid}",
+                        json.dumps({"learned": learned}, ensure_ascii=False))
     return {"case_ids": case_ids, "learned": learned_all}
 
 
@@ -100,11 +100,13 @@ def false_positive(case_id: int, body: dict | None = None):
         raise HTTPException(404, "case not found")
     reason = (body or {}).get("reason", "")
     alerts = db.get_case_alerts(case_id)
-    tol = tolerance.load_tolerance()
-    keys = [signature(a["source"], a["type"], a["raw"]) for a in alerts]
-    learned = tolerance.learn(tol, keys)
-    if learned:
-        tolerance.save_tolerance(tol)
+    keys = [signature(a["source"], a["type"], a["raw"], a["asset"]) for a in alerts]
+    learned = tolerance.learn_signatures(keys)
+    # 冲突检测：误报签名若已在黑名单，说明同一形状曾被判过真阳，记审计留给人工复核。
+    conflicts = [k for k in keys if k in innate.load_rules()]
+    if conflicts:
+        db.insert_audit("tolerance_conflict", f"case {case_id}",
+                        json.dumps({"conflicts": conflicts, "reason": reason}, ensure_ascii=False))
     db.patch_case(case_id, {"verdict": "False Positive", "status": "Closed", "disposition_note": reason})
     db.insert_audit("false_positive", f"case {case_id}",
                     json.dumps({"learned": learned, "reason": reason}, ensure_ascii=False))
@@ -127,11 +129,13 @@ def true_positive(case_id: int, body: dict | None = None):
         raise HTTPException(404, "case not found")
     reason = (body or {}).get("reason", "")
     alerts = db.get_case_alerts(case_id)
-    keys = [signature(a["source"], a["type"], a["raw"]) for a in alerts]
-    rules = innate.load_rules()
-    learned = innate.add(rules, keys)
-    if learned:
-        innate.save_rules(rules)
+    keys = [signature(a["source"], a["type"], a["raw"], a["asset"]) for a in alerts]
+    learned = innate.add_signatures(keys)
+    # 冲突检测：真阳签名若已在白名单，说明同一形状曾被判过误报，记审计留给人工复核。
+    conflicts = [k for k in keys if k in tolerance.load_tolerance()]
+    if conflicts:
+        db.insert_audit("innate_conflict", f"case {case_id}",
+                        json.dumps({"conflicts": conflicts, "reason": reason}, ensure_ascii=False))
     db.patch_case(case_id, {"verdict": "True Positive", "status": "Closed", "disposition_note": reason})
     db.insert_audit("true_positive", f"case {case_id}",
                     json.dumps({"learned": learned, "reason": reason}, ensure_ascii=False))

@@ -72,30 +72,32 @@ def suppressed():
 @router.post("/tolerance/remove", dependencies=[Depends(auth.require_perm("triage"))])
 def tolerance_remove(body: dict):
     """从免疫耐受白名单删一条签名。"""
-    tol = tolerance.load_tolerance()
-    tol.discard((body or {}).get("signature", ""))
-    tolerance.save_tolerance(tol)
-    return {"remaining": sorted(tol)}
+    sig = (body or {}).get("signature", "")
+    removed = tolerance.remove_signature(sig)
+    db.insert_audit("tolerance_remove", sig, json.dumps({"removed": removed}, ensure_ascii=False))
+    return {"remaining": sorted(tolerance.load_tolerance())}
 
 
 @router.post("/tolerance/clear", dependencies=[Depends(auth.require_perm("triage"))])
 def tolerance_clear():
-    tolerance.save_tolerance(set())
+    tolerance.clear_entries()
+    db.insert_audit("tolerance_clear", "all", "")
     return {"remaining": []}
 
 
 @router.post("/innate/remove", dependencies=[Depends(auth.require_perm("triage"))])
 def innate_remove(body: dict):
     """从固有免疫规则删一条签名。"""
-    rules = innate.load_rules()
-    rules.discard((body or {}).get("signature", ""))
-    innate.save_rules(rules)
-    return {"remaining": sorted(rules)}
+    sig = (body or {}).get("signature", "")
+    removed = innate.remove_signature(sig)
+    db.insert_audit("innate_remove", sig, json.dumps({"removed": removed}, ensure_ascii=False))
+    return {"remaining": sorted(innate.load_rules())}
 
 
 @router.post("/innate/clear", dependencies=[Depends(auth.require_perm("triage"))])
 def innate_clear():
-    innate.save_rules(set())
+    innate.clear_rules()
+    db.insert_audit("innate_clear", "all", "")
     return {"remaining": []}
 
 
@@ -116,16 +118,25 @@ def list_audit(action: str | None = None, limit: int = 200):
 
 @router.post("/suppressed/{alert_id}/restore", dependencies=[Depends(auth.require_perm("triage"))])
 def restore(alert_id: int):
-    """把一条被误压的告警放回：重新上板、归案、触发深度分析。"""
+    """把一条被误压的告警放回：重新上板、归案、触发深度分析。
+
+    放回同时纠正白名单误杀——若该告警签名在白名单里（被免疫耐受静默），
+    移除它，避免同形状告警反复被静默。
+    """
     alert = db.get_alert(alert_id)
     if not alert:
         raise HTTPException(404, "告警不存在")
+    sig = signature(alert["source"], alert["type"], alert["raw"], alert["asset"])
+    untolerated = tolerance.remove_signature(sig)
     signal = {"time": alert["time"], "source": alert["source"], "asset": alert["asset"],
               "type": alert["type"], "raw": alert["raw"]}
     result = pipeline.restore_signal(signal)
     db.delete_alert(alert_id)
+    changes = {"from_alert": alert_id}
+    if untolerated:
+        changes["untolerated"] = sig
     db.insert_audit("restored", f'{alert["asset"]} {alert["type"]}',
-                    json.dumps({"from_alert": alert_id}, ensure_ascii=False))
+                    json.dumps(changes, ensure_ascii=False))
     return result
 
 
@@ -137,20 +148,23 @@ def alert_disposition(alert_id: int, body: dict | None = None):
         raise HTTPException(404, "告警不存在")
     verdict = (body or {}).get("verdict", "")
     reason = (body or {}).get("reason", "")
-    sig = signature(alert["source"], alert["type"], alert["raw"])
+    sig = signature(alert["source"], alert["type"], alert["raw"], alert["asset"])
+    learned = []
     if verdict == "False Positive":
-        tol = tolerance.load_tolerance()
-        learned = tolerance.learn(tol, [sig])
-        if learned:
-            tolerance.save_tolerance(tol)
+        learned = tolerance.learn_signatures([sig])
+        if sig in innate.load_rules():
+            db.insert_audit("tolerance_conflict", f"alert {alert_id}",
+                            json.dumps({"conflicts": [sig], "reason": reason}, ensure_ascii=False))
     elif verdict == "True Positive":
-        rules = innate.load_rules()
-        learned = innate.add(rules, [sig])
-        if learned:
-            innate.save_rules(rules)
+        learned = innate.add_signatures([sig])
+        if sig in tolerance.load_tolerance():
+            db.insert_audit("innate_conflict", f"alert {alert_id}",
+                            json.dumps({"conflicts": [sig], "reason": reason}, ensure_ascii=False))
     else:
         raise HTTPException(400, "verdict 必须是 False Positive 或 True Positive")
     db.set_alert_verdict(alert_id, verdict)
+    db.insert_audit("alert_disposition", f"alert {alert_id}",
+                    json.dumps({"verdict": verdict, "learned": learned, "reason": reason}, ensure_ascii=False))
     db.append_feedback({
         "type": "false_positive" if verdict == "False Positive" else "true_positive",
         "entities": [[alert["asset"], alert["type"]]],
@@ -232,7 +246,7 @@ def reset():
 
 @router.post("/consolidate", dependencies=[Depends(auth.require_perm("maintenance"))])
 def consolidate_now():
-    """手动触发夜间巩固（睡眠巩固：SQLite → 记忆 + 固有免疫规则）。"""
+    """手动触发夜间巩固（睡眠巩固：SQLite → 检索记忆，供系统2 RAG）。"""
     import nightly
     return nightly.consolidate()
 

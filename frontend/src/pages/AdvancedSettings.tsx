@@ -251,6 +251,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                     <Field label="RAG 条数"><input type="number" value={detection.rag_limit} onChange={(e) => patchDetection('rag_limit', +e.target.value)} /></Field>
                     <Field label="固有免疫 conf"><input type="number" step="0.05" value={detection.innate_conf} onChange={(e) => patchDetection('innate_conf', +e.target.value)} /></Field>
                     <Field label="放回 conf"><input type="number" step="0.05" value={detection.restore_conf} onChange={(e) => patchDetection('restore_conf', +e.target.value)} /></Field>
+                    <Field label="白名单 TTL（天）"><input type="number" value={detection.tolerance_ttl_days} onChange={(e) => patchDetection('tolerance_ttl_days', +e.target.value)} /></Field>
                   </div>
                   <div className="sec-label" style={{ marginTop: 16 }}>Mock 规则（仅 mock 模式生效）</div>
                   <p className="muted">关键词 → 权重；conf = min(ceiling, base + Σ命中权重)，未命中 = no_hit，可疑线 = cutoff。</p>

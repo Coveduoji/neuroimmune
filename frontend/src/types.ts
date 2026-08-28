@@ -153,6 +153,7 @@ export interface DetectionConfig {
   rag_limit: number;
   innate_conf: number;
   restore_conf: number;
+  tolerance_ttl_days: number;
   mock_indicators: [string, number][];
   mock_no_hit: number;
   mock_base: number;
