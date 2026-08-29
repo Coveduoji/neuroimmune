@@ -111,6 +111,7 @@ export default function App() {
         </nav>
         <div className="spacer" />
         <span className="muted" style={{ marginRight: 8, fontSize: 13 }}>{user.username}{user.role === 'admin' ? ' · 管理员' : ''}</span>
+        <button className="btn" onClick={() => window.open('/manual.html', '_blank', 'noopener')} style={{ marginRight: 8 }}>手册</button>
         <button className="btn" onClick={logout} style={{ marginRight: 14 }}>退出</button>
         {health && (
           <div className="status-bar">

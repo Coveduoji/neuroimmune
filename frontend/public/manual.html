@@ -1,0 +1,666 @@
+<title>神经免疫用户手册</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --ink: #16222e;
+    --text: #3a4a58;
+    --muted: #6b7a88;
+    --accent: #0d7f8f;
+    --accent-strong: #0a5f6b;
+    --accent-soft: #e2f0f2;
+    --critical: #bf4036;
+    --critical-soft: #f8e8e6;
+    --rule: #e2e7ec;
+    --chip: #eef2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c141d;
+      --surface: #121d29;
+      --ink: #e8eef4;
+      --text: #b6c2ce;
+      --muted: #7f8e9c;
+      --accent: #35b8c6;
+      --accent-strong: #5cd2dd;
+      --accent-soft: #123039;
+      --critical: #e06b5b;
+      --critical-soft: #3a1f1c;
+      --rule: #1e2b37;
+      --chip: #182430;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c141d;
+    --surface: #121d29;
+    --ink: #e8eef4;
+    --text: #b6c2ce;
+    --muted: #7f8e9c;
+    --accent: #35b8c6;
+    --accent-strong: #5cd2dd;
+    --accent-soft: #123039;
+    --critical: #e06b5b;
+    --critical-soft: #3a1f1c;
+    --rule: #1e2b37;
+    --chip: #182430;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-strong); text-decoration: underline; }
+
+  /* header */
+  .masthead {
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .masthead-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 32px 32px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  .masthead h1 {
+    font-family: "Sora", sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 0 0 10px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .masthead .lede {
+    font-size: 17px;
+    color: var(--text);
+    max-width: 620px;
+    margin: 0;
+  }
+  .masthead .en {
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* layout */
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 44px;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .wrap { grid-template-columns: 1fr; padding: 20px 18px; }
+    .toc { position: static !important; }
+  }
+
+  /* TOC */
+  .toc { position: sticky; top: 24px; }
+  .toc .toc-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  .toc a {
+    display: block;
+    padding: 5px 0;
+    font-size: 14px;
+    color: var(--text);
+    border-left: 2px solid transparent;
+    padding-left: 12px;
+    line-height: 1.4;
+  }
+  .toc a:hover { color: var(--accent); text-decoration: none; }
+  .toc a.sub { padding-left: 26px; font-size: 13px; color: var(--muted); }
+
+  /* main content */
+  main { min-width: 0; }
+  section { margin-bottom: 48px; }
+  section:target { scroll-margin-top: 24px; }
+  h2 {
+    font-family: "Sora", sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--ink);
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+  }
+  h2 .no {
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--accent);
+    font-weight: 500;
+    margin-right: 10px;
+    font-size: 16px;
+  }
+  h3 {
+    font-family: "Sora", sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--ink);
+    margin: 28px 0 10px;
+  }
+  p { margin: 0 0 14px; }
+  strong { color: var(--ink); font-weight: 600; }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.88em;
+    background: var(--chip);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  pre {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    background: var(--chip);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  pre code { background: transparent; padding: 0; }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; margin: 14px 0 18px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    background: var(--chip);
+  }
+  tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  td.n { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* callouts & tags */
+  .note {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .warn {
+    background: var(--critical-soft);
+    border-left: 3px solid var(--critical);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--chip);
+    color: var(--text);
+    margin: 0 2px;
+  }
+  .tag.crit { background: var(--critical-soft); color: var(--critical); }
+  .tag.acc { background: var(--accent-soft); color: var(--accent-strong); }
+
+  /* steps */
+  ol.steps { padding-left: 20px; margin: 10px 0 16px; }
+  ol.steps li { margin-bottom: 8px; }
+  ol.steps li::marker { color: var(--accent); font-weight: 600; }
+
+  ul { padding-left: 20px; margin: 10px 0 16px; }
+  li { margin-bottom: 6px; }
+
+  .faq .q { font-weight: 600; color: var(--ink); }
+</style>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <p class="eyebrow">SOC 告警降噪与研判工作台</p>
+    <h1>神经免疫 · 用户手册 <span class="en">NeuroImmune</span></h1>
+    <p class="lede">用「神经系统 + 免疫系统」的隐喻，把海量安全告警层层压缩成少数需要人工研判的案件，并随使用越用越准。</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="toc" aria-label="目录">
+    <p class="toc-label">目录</p>
+    <a href="#intro">一、产品简介</a>
+    <a href="#start">二、快速开始</a>
+    <a href="#concepts">三、核心概念与告警旅程</a>
+    <a href="#pages">四、页面功能与使用</a>
+    <a class="sub" href="#p-dashboard">看板</a>
+    <a class="sub" href="#p-triage">分诊</a>
+    <a class="sub" href="#p-case">案件详情</a>
+    <a class="sub" href="#p-thalamus">丘脑</a>
+    <a class="sub" href="#p-immune">免疫</a>
+    <a class="sub" href="#p-hippocampus">海马体</a>
+    <a class="sub" href="#p-settings">设置</a>
+    <a class="sub" href="#p-advanced">高级设置</a>
+    <a class="sub" href="#p-users">用户</a>
+    <a href="#ingest">五、数据接入</a>
+    <a href="#config">六、系统配置</a>
+    <a href="#perm">七、权限管理</a>
+    <a href="#ops">八、运维与维护</a>
+    <a href="#faq">九、常见问题 FAQ</a>
+  </nav>
+
+  <main>
+
+    <section id="intro">
+      <h2><span class="no">一</span>产品简介</h2>
+      <p><strong>解决什么问题</strong>：安全设备（天眼 / HIDS / WAF 等）每天产生海量告警，人看不过来（告警疲劳）。本平台把「规则秒拦 + 白名单降噪 + 便宜模型初筛 + 贵模型深度研判」编排成流水线，把上千条告警压到每天真正需要人看的少数案件。</p>
+      <div class="tablewrap"><table>
+        <tr><th>价值</th><th>说明</th></tr>
+        <tr><td class="n"><strong>降噪</strong></td><td>用固有免疫秒拦 + 免疫耐受白名单 + 便宜初筛模型（杏仁核），把海量告警压到可处理量级，贵的深度模型只醒「真正可疑的那几条」</td></tr>
+        <tr><td class="n"><strong>越用越准</strong></td><td>分析师判定回写白名单/黑名单；夜间巩固把当天案件蒸馏成检索记忆，供后续研判参考</td></tr>
+        <tr><td class="n"><strong>风险档位</strong></td><td>管理层拨「风险旋钮」，全局换挡（宽松 / 正常 / 保守 / 战时）</td></tr>
+      </table></div>
+      <p><strong>双术语体系</strong>：界面支持「生物术语 / 安全术语」一键切换（如「丘脑」↔「原始告警」、「免疫」↔「规则库」）。本手册用生物术语并括号标注安全含义。</p>
+    </section>
+
+    <section id="start">
+      <h2><span class="no">二</span>快速开始</h2>
+      <h3>一键启动（开发/演示）</h3>
+      <pre><code>./start.sh</code></pre>
+      <p>自动装依赖 → 起后端 <code>:8000</code> → 起前端 <code>:5173</code>，日志写入 <code>logs/</code>，syslog 接收器监听 <code>:5514</code>（UDP + TCP）。</p>
+      <ul>
+        <li>访问 <code>http://localhost:5173</code></li>
+        <li>默认管理员：<strong>admin / admin</strong>（生产环境务必用环境变量覆盖；本地 <code>.env</code> 会覆盖此默认值）</li>
+        <li>自定义端口：<code>BACKEND_PORT=8010 FRONTEND_PORT=5174 ./start.sh</code></li>
+      </ul>
+      <h3>手动启动</h3>
+      <pre><code>cd backend &amp;&amp; python3 -m uvicorn app:app --port 8000     # 后端
+cd frontend &amp;&amp; npm install &amp;&amp; npm run dev          # 前端（另开终端）</code></pre>
+      <h3>容器化部署（生产推荐）</h3>
+      <pre><code>cp .env.example .env    # 填 NEUROIMMUNE_ADMIN_PASSWORD / NEUROIMMUNE_API_TOKEN
+docker compose up -d --build</code></pre>
+      <ul>
+        <li>nginx 托管前端静态 + 反代 <code>/api</code>（默认 80 端口，HTTPS 见 <code>nginx.conf</code>）。</li>
+        <li>数据持久化在命名卷 <code>neuroimmune-data</code>；备份/恢复 <code>./scripts/backup.sh</code> / <code>./scripts/restore.sh</code>。</li>
+        <li><strong>安全底线</strong>：未设管理员凭据时拒绝启动；<code>/api/ingest</code> 未配 token 时拒绝接入；syslog 默认只绑 <code>127.0.0.1</code>。</li>
+      </ul>
+      <h3>纯内网离线部署</h3>
+      <pre><code>./scripts/offline_bundle.sh            # Docker 方案
+./scripts/offline_bundle_no_docker.sh  # 无 Docker 方案</code></pre>
+      <p>配置模型（可选，不做也能跑）：复制 <code>prototype/.env.example</code> 为 <code>prototype/.env</code> 填 key（留空 = mock 模式），详见<a href="#model">六、系统配置 → 模型接入</a>。</p>
+    </section>
+
+    <section id="concepts">
+      <h2><span class="no">三</span>核心概念与告警旅程</h2>
+      <div class="tablewrap"><table>
+        <tr><th>生物/神经术语</th><th>安全术语</th><th>实际功能</th></tr>
+        <tr><td class="n">丘脑 Thalamus</td><td>原始告警</td><td>原始告警流视图（含被抑制项 + 抑制原因）</td></tr>
+        <tr><td class="n">海马体 Hippocampus</td><td>关联分析</td><td>全局实体关系图 + 事件下钻</td></tr>
+        <tr><td class="n">杏仁核 Amygdala</td><td>初筛模型</td><td>对单条告警快速打分（可疑/置信度/理由）</td></tr>
+        <tr><td class="n">前额叶 / 系统2</td><td>深度分析模型</td><td>对升级案件做结构化深度研判报告</td></tr>
+        <tr><td class="n">黑板 Blackboard</td><td>全局工作区</td><td>统一 Event 模型 + 显著性/相关性加权</td></tr>
+        <tr><td class="n">固有免疫 Innate</td><td>检测规则（黑名单）</td><td>已知坏签名 → 置信度 0.95 秒拦，不调模型</td></tr>
+        <tr><td class="n">免疫耐受 Tolerance</td><td>白名单</td><td>已知好签名 → 降级（静默但不丢弃）</td></tr>
+        <tr><td class="n">签名 Signature</td><td>告警形状</td><td>掩码 IP/hash/数字，提取稳定的告警模板</td></tr>
+        <tr><td class="n">神经调质 Knob</td><td>风险等级</td><td>风险预设，映射到抑制线/顶出线/预算</td></tr>
+        <tr><td class="n">睡眠巩固 Consolidate</td><td>夜间记忆固化</td><td>定期蒸馏当日案件为可检索记忆</td></tr>
+      </table></div>
+
+      <h3>一条告警的完整旅程</h3>
+      <pre><code>① 免疫耐受（白名单） → 命中「已知好」签名，降级（留痕，不丢弃）
+② 固有免疫（黑名单） → 命中「已知坏」签名，置信度 0.95 秒拦，不调模型
+③ 杏仁核（快模型）   → 逐条打分，低于抑制线 → 降级
+④ 黑板（相关性加权） → 弱信号拼链，计算案件强度
+⑤ 实体图（连通分量） → 关联同一实体的告警聚成「案件」
+⑥ 前额叶（系统2）    → 案件顶出后深度研判，出结构化报告
+⑦ 分析师判定        → 误报写白名单 / 真阳写黑名单
+⑧ 夜间巩固          → 当天案件蒸馏成检索记忆（供系统2 RAG）</code></pre>
+      <div class="note"><strong>设计原则</strong>：<strong>抑制 = 降级 + 留痕，永不静默丢弃</strong>。每条被压掉的告警都能在「丘脑」页看到原因，必要时一键「放回」。</div>
+
+      <h3>关键概念详解</h3>
+      <p><strong>签名 Signature</strong>：把一条告警的「形状」抽成稳定模板——掩码掉会变的 token（IP/哈希/独立数字/UUID），保留语义 token（主机名/账号/描述词）。<code>svc_backup 登录跳板机</code> 和 <code>svc_backup 登录数据库</code> 是不同签名；<code>资产A 的端口扫描</code> 和 <code>资产B 的端口扫描</code> 也是不同签名（asset 不掩码）。</p>
+      <p><strong>案件强度</strong>：<code>max(各告警置信度) + min(链路加成上限, 链路加成 × (告警数-1))</code>。告警越多、置信度越高，案件强度越高。</p>
+      <p><strong>顶出 Escalate</strong>：案件强度 ≥ 顶出线 → 唤醒系统2 深度研判。</p>
+    </section>
+
+    <section id="pages">
+      <h2><span class="no">四</span>页面功能与使用</h2>
+
+      <h3 id="p-dashboard">1. 看板 Dashboard</h3>
+      <p><strong>功能</strong>：全局态势一览 + 降噪效果展示。</p>
+      <div class="tablewrap"><table>
+        <tr><th>元素</th><th>说明</th></tr>
+        <tr><td class="n">KPI 卡片（8 个）</td><td>案件、告警（上板/抑制）、被抑制、深度分析、实体、攻击链、白名单、规则；点击跳转对应页面</td></tr>
+        <tr><td class="n">告警降噪漏斗</td><td>告警 → 归案 → 深度分析，三行条形图 + 降噪率</td></tr>
+        <tr><td class="n">流量趋势</td><td>近 24 小时 / 7 天 / 30 天告警流量曲线</td></tr>
+        <tr><td class="n">导出报告</td><td>打开报告导出对话框</td></tr>
+      </table></div>
+      <p><strong>报告导出</strong>（看板/案件详情都能触发）：时间范围（全部 / 最近 24h / 7d / 自定义）、筛选（来源 / 定性 / 状态）、格式（docx / md / html）。</p>
+
+      <h3 id="p-triage">2. 分诊 Triage（案件队列）</h3>
+      <p><strong>功能</strong>：案件待办队列，逐个或批量处置。</p>
+      <div class="tablewrap"><table>
+        <tr><th>元素</th><th>说明</th></tr>
+        <tr><td class="n">搜索框</td><td>按案件 ID / 标题 / 实体搜索</td></tr>
+        <tr><td class="n">只看待处理</td><td>只显示 <code>New / In Progress / On Hold</code> 状态</td></tr>
+        <tr><td class="n">状态筛选</td><td>New / In Progress / On Hold / Resolved / Closed</td></tr>
+        <tr><td class="n">结论筛选</td><td>真阳性 / 可疑 / 误报 / 良性 / 证据不足</td></tr>
+        <tr><td class="n">表格</td><td>勾选、案件ID、实体、严重度、状态、结论</td></tr>
+        <tr><td class="n">批量标记误报</td><td>批量把勾选案件写白名单</td></tr>
+      </table></div>
+      <p><strong>批量标记误报步骤</strong>：</p>
+      <ol class="steps">
+        <li>勾选要处置的案件（<strong>已标记的案件复选框为灰，不可勾选</strong>）；</li>
+        <li>在「批量处置理由」框填理由（可选，会写进记忆）；</li>
+        <li>点「批量标记误报」→ 弹二次确认 → 确认后每个案件：写白名单 + 状态置 Closed + 记反馈（含理由）。</li>
+      </ol>
+      <p><strong>严重度</strong>：按案件强度分高（≥1.0）/ 中（≥0.8）/ 低（其余）。</p>
+
+      <h3 id="p-case">3. 案件详情 CaseDetail</h3>
+      <p><strong>功能</strong>：单个案件的完整信息与处置入口。</p>
+      <div class="tablewrap"><table>
+        <tr><th>分区</th><th>内容</th></tr>
+        <tr><td class="n">头部</td><td>案件 ID、强度、告警数</td></tr>
+        <tr><td class="n">攻击链</td><td>按时间串起的告警步骤，点击节点在实体图高亮</td></tr>
+        <tr><td class="n">告警时间线</td><td>逐条告警 + 置信度 + 单条误报/真阳性标记按钮</td></tr>
+        <tr><td class="n">实体图</td><td>案件内实体关系图（双向高亮），点实体反查关联案件</td></tr>
+        <tr><td class="n">AI 调查报告</td><td>系统2 生成的结构化报告</td></tr>
+        <tr><td class="n">处置操作栏</td><td>理由输入、结论下拉、保存结论、关闭/重启、外发、导出</td></tr>
+      </table></div>
+      <p><strong>AI 调查报告结构</strong>：定性 verdict + 置信度、摘要 digest、证据 evidence（<code>事实 → 结论</code>）、攻击链 attack_chain（<code>阶段：描述</code>）、IOC、待查 unknowns、处置建议 remediations。</p>
+      <div class="tablewrap"><table>
+        <tr><th>操作</th><th>效果</th></tr>
+        <tr><td class="n">结论 = 误报</td><td>签名写白名单（同形状降级），状态置 Closed</td></tr>
+        <tr><td class="n">结论 = 真阳性</td><td>签名写黑名单（同形状秒拦），状态置 Closed</td></tr>
+        <tr><td class="n">结论 = 可疑 / 良性</td><td>仅记录结论，不改状态</td></tr>
+        <tr><td class="n">结论 = 证据不足</td><td>状态自动置「挂起 On Hold」（仍算待处理）</td></tr>
+        <tr><td class="n">关闭案件</td><td>状态置 Closed（终态）</td></tr>
+        <tr><td class="n">重启</td><td>已关闭案件重新打开，状态置 In Progress（按钮高亮）</td></tr>
+        <tr><td class="n">外发</td><td>手动推送到配置的 webhook 目标</td></tr>
+        <tr><td class="n">导出报告</td><td>导出该案报告</td></tr>
+      </table></div>
+
+      <h3 id="p-thalamus">4. 丘脑 Thalamus（原始告警）</h3>
+      <p><strong>功能</strong>：查看所有原始告警（<strong>含被抑制的</strong>），是「放回」误压告警的入口。</p>
+      <div class="tablewrap"><table>
+        <tr><th>元素</th><th>说明</th></tr>
+        <tr><td class="n">搜索 / 来源 / 抑制状态 / 排序</td><td>过滤原始告警</td></tr>
+        <tr><td class="n">告警流</td><td>每条：时间、来源/类型、置信度、标签、raw、抑制原因</td></tr>
+        <tr><td class="n">放回按钮</td><td>仅被抑制的告警显示</td></tr>
+        <tr><td class="n">决策留痕侧栏</td><td>「为什么没深想 / 为什么被拦」的审计记录</td></tr>
+      </table></div>
+      <ol class="steps">
+        <li><strong>筛选</strong>：用来源/抑制状态/搜索/排序定位告警。</li>
+        <li><strong>看抑制原因</strong>：被抑制告警显示「免疫耐受：已知好 / 杏仁核低置信度（x &lt; 抑制线）/ 固有免疫秒拦」等。</li>
+        <li><strong>放回</strong>：点「放回」→ 该信号强制上板、归入案件、触发系统2 深想，并跳转到对应案件。</li>
+      </ol>
+
+      <h3 id="p-immune">5. 免疫 Immune（规则库）</h3>
+      <p><strong>功能</strong>：管理白名单（免疫耐受）与黑名单（固有免疫）。</p>
+      <div class="tablewrap"><table>
+        <tr><th>卡片</th><th>说明</th><th>操作</th></tr>
+        <tr><td class="n"><span class="tag">免疫耐受</span> 已知好→降级</td><td>按签名精确匹配，命中即降级，连杏仁核都不叫</td><td>逐条删除 / 清空</td></tr>
+        <tr><td class="n"><span class="tag crit">固有免疫</span> 已知坏→秒拦</td><td>命中即边缘秒拦（置信度 0.95），前额叶不醒</td><td>逐条删除 / 清空</td></tr>
+      </table></div>
+      <p>签名形如 <code>天眼|ssrf|&lt;IP&gt; 探测云元数据 &lt;IP&gt;</code>——IP/哈希/数字被掩成占位符，保留语义。主要由「标记误报/真阳性」自动写入。</p>
+
+      <h3 id="p-hippocampus">6. 海马体 Hippocampus（关联分析）</h3>
+      <p><strong>功能</strong>：全局实体关联图，看清告警之间的关联。</p>
+      <div class="tablewrap"><table>
+        <tr><th>元素</th><th>说明</th></tr>
+        <tr><td class="n">视图模式</td><td>全部 / IP / 实体（主机账号）</td></tr>
+        <tr><td class="n">节点类型</td><td>实体（蓝）、IP（橙）、文件哈希（粉）、域名（黄）</td></tr>
+        <tr><td class="n">事件下钻</td><td>点节点/边，下钻该实体/关联的告警列表</td></tr>
+      </table></div>
+      <p><strong>操作</strong>：切换视图模式 → 点节点/边 → 下方显示关联事件 → 点事件跳转到对应案件。</p>
+
+      <h3 id="p-settings">7. 设置 Settings</h3>
+      <div class="tablewrap"><table>
+        <tr><th>区块</th><th>功能与操作</th></tr>
+        <tr><td class="n">风险旋钮</td><td>点「宽松/正常/保守/战时」切换档位</td></tr>
+        <tr><td class="n">模型模式</td><td>自动 / 真实 / Mock（零成本），免重启立即生效</td></tr>
+        <tr><td class="n">数据接入</td><td>显示 syslog 监听地址/端口、模型信息；上传 JSONL/JSON/CSV 文件</td></tr>
+        <tr><td class="n">健康状态</td><td>DB 规模、syslog 监听、当前旋钮、最近入库；「立即夜间巩固」「清空数据库」</td></tr>
+        <tr><td class="n">界面术语</td><td>生物术语 / 安全术语切换</td></tr>
+      </table></div>
+      <div class="warn"><strong>清空数据库</strong>：只清告警/案件/报告，<strong>不清记忆</strong>（记忆在「高级设置 → 记忆管理」里清）。</div>
+
+      <h3 id="p-advanced">8. 高级设置 AdvancedSettings</h3>
+      <p>进入方式：设置页点「高级设置 →」。左侧分区导航 + 右侧表单。大部分配置「保存」即生效（syslog 地址/端口改后需重启后端）。各分区详见<a href="#config">六、系统配置</a>。</p>
+
+      <h3 id="p-users">9. 用户 Users</h3>
+      <div class="tablewrap"><table>
+        <tr><th>功能</th><th>说明</th></tr>
+        <tr><td class="n">修改密码</td><td>改自己的密码</td></tr>
+        <tr><td class="n">注册用户</td><td>管理员建号（用户名/密码/角色）</td></tr>
+        <tr><td class="n">改角色 / 重置密码 / 删号</td><td>admin ↔ user 等管理操作</td></tr>
+        <tr><td class="n">配权限</td><td>给 user 逐项勾选 triage/config/maintenance/users</td></tr>
+      </table></div>
+    </section>
+
+    <section id="ingest">
+      <h2><span class="no">五</span>数据接入</h2>
+      <p>平台支持<strong>多通道 + 多来源</strong>接入，四条通道汇聚到同一条处理流水线。</p>
+      <div class="tablewrap"><table>
+        <tr><th>通道</th><th>入口</th><th>鉴权</th><th>用途</th></tr>
+        <tr><td class="n">syslog 接收</td><td>UDP/TCP <code>:5514</code></td><td>无（靠 bind）</td><td>实时流式</td></tr>
+        <tr><td class="n">HTTP JSON API</td><td><code>POST /api/ingest</code></td><td><code>X-API-Token</code></td><td>机器/脚本流式</td></tr>
+        <tr><td class="n">文件上传</td><td>设置 → 数据接入</td><td>用户 JWT</td><td>JSONL/JSON/CSV 批量</td></tr>
+        <tr><td class="n">CLI 批量</td><td><code>python3 ingest.py</code></td><td>本地</td><td>离线全量（重置库）</td></tr>
+      </table></div>
+
+      <h3>syslog 接收</h3>
+      <p>监听 <code>UDP/TCP :5514</code>，解析 RFC3164 / RFC5424 标准 syslog。默认只绑 <code>127.0.0.1</code>；要收远程设备日志，把监听地址设为 <code>0.0.0.0</code> 并放行端口（Docker 需在 compose 取消 5514 端口映射注释）。</p>
+
+      <h3>HTTP JSON API</h3>
+      <p>单条信号（signal）字段：</p>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th><th>必填</th></tr>
+        <tr><td class="n"><code>time</code></td><td>事件时间</td><td>是</td></tr>
+        <tr><td class="n"><code>source</code></td><td>来源标签（调用方自报，如「天眼」）</td><td>是</td></tr>
+        <tr><td class="n"><code>asset</code></td><td>资产/主体（主机名/账号）</td><td>是</td></tr>
+        <tr><td class="n"><code>type</code></td><td>告警类型</td><td>是</td></tr>
+        <tr><td class="n"><code>raw</code></td><td>原始描述</td><td>是</td></tr>
+      </table></div>
+      <pre><code>curl -X POST http://127.0.0.1:8000/api/ingest \
+  -H "X-API-Token: &lt;token&gt;" -H "Content-Type: application/json" \
+  -d '{"signals":[{"time":"2026-08-28 10:00:00","source":"天眼","asset":"web-01","type":"ssrf","raw":"探测云元数据 169.254.169.254"}]}'</code></pre>
+      <div class="warn">未配置 token 时 <code>/api/ingest</code> 拒绝接入（fail-closed）。</div>
+
+      <h3>来源识别（syslog 专属）</h3>
+      <p>syslog 进来后按「来源映射」自动识别来源，判定优先级：</p>
+      <pre><code>ip（来源地址）&gt; tag（应用名）&gt; hostname（主机名）&gt; facility（RFC 编码）</code></pre>
+      <ul>
+        <li>均为大小写不敏感的子串匹配；<code>ip</code> 可为完整地址或网段前缀（如 <code>10.20.</code>）。</li>
+        <li>映射在「高级设置 → 数据接入（syslog）→ 来源映射」编辑，四组键值 <code>ip / tag / hostname / facility</code>。</li>
+        <li><strong>设备需发标准 RFC3164/5424 syslog</strong>；非标准格式会被丢弃。</li>
+        <li>未命中任何映射 → 落到 facility 内置默认（认证/系统/审计/其他），不显示在「已配置来源」，但会在丘脑看到。</li>
+        <li>有中转 rsyslog 时，<code>ip</code> 判定用的是<strong>中转机 IP</strong>，不是原始设备 IP。</li>
+      </ul>
+
+      <h3>来源解析（精确实体）</h3>
+      <ol class="steps">
+        <li>填<strong>来源名</strong>（如「天眼」）+ 贴<strong>样本日志</strong>（2~5 条，每行一条）。</li>
+        <li>点「生成解析配置」→ 系统用模型生成规则，显示可编辑预览。</li>
+        <li>确认后「保存解析配置」。</li>
+        <li>之后该来源的日志按规则确定性解析、精确实体拼链；可点规则条目查看/编辑/启停/删除完整 JSON。</li>
+      </ol>
+    </section>
+
+    <section id="config">
+      <h2><span class="no">六</span>系统配置</h2>
+
+      <h3 id="model">模型接入</h3>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th><th>默认</th></tr>
+        <tr><td class="n"><code>api_key</code></td><td>系统1（杏仁核）key</td><td>空 = mock</td></tr>
+        <tr><td class="n"><code>base_url</code></td><td>系统1 OpenAI 兼容端点</td><td><code>https://api.deepseek.com/v1</code></td></tr>
+        <tr><td class="n"><code>model</code></td><td>系统1 模型名</td><td><code>deepseek-chat</code></td></tr>
+        <tr><td class="n"><code>deep_*</code></td><td>系统2（深想）的 key/base_url/model</td><td>空 = 复用系统1</td></tr>
+        <tr><td class="n"><code>temperature</code></td><td>采样温度</td><td>0.0</td></tr>
+        <tr><td class="n"><code>timeout</code></td><td>请求超时（秒）</td><td>120</td></tr>
+      </table></div>
+      <p>任何 OpenAI 兼容端点都行（DeepSeek / OpenRouter / Groq / Ollama / vLLM）。<strong>零 key 也能跑通全流程</strong>（MockClient 用关键词规则替代）。</p>
+
+      <h3>风险旋钮（四档）</h3>
+      <p>三个旋钮：<strong>抑制线</strong>（杏仁核置信度低于此 → 降级）、<strong>顶出线</strong>（案件强度达此 → 唤醒系统2）、<strong>深度预算</strong>（每窗口最多唤醒多少次贵模型）。</p>
+      <div class="tablewrap"><table>
+        <tr><th>档位</th><th>抑制线</th><th>顶出线</th><th>预算</th><th>适用</th></tr>
+        <tr><td class="n">宽松</td><td class="n">0.75</td><td class="n">0.85</td><td class="n">1</td><td>只留最可疑，最少深想</td></tr>
+        <tr><td class="n">正常</td><td class="n">0.55</td><td class="n">0.75</td><td class="n">2</td><td>默认</td></tr>
+        <tr><td class="n">保守</td><td class="n">0.40</td><td class="n">0.62</td><td class="n">3</td><td>多留多看</td></tr>
+        <tr><td class="n">战时</td><td class="n">0.25</td><td class="n">0.45</td><td class="n">99</td><td>宁可多报，全员深想</td></tr>
+      </table></div>
+
+      <h3>频率降级</h3>
+      <p>某资产某类型告警在时间窗内出现次数过多 → 视为业务误报自动降级。</p>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th><th>默认</th></tr>
+        <tr><td class="n"><code>window</code></td><td>统计窗口（秒）</td><td class="n">3600</td></tr>
+        <tr><td class="n"><code>threshold</code></td><td>超过该次数触发降级</td><td class="n">10</td></tr>
+        <tr><td class="n"><code>demote</code></td><td>置信度折扣系数</td><td class="n">0.4</td></tr>
+      </table></div>
+
+      <h3>前额叶唤醒门槛</h3>
+      <p>控制系统2（贵模型）何时被唤醒。</p>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th><th>默认</th></tr>
+        <tr><td class="n"><code>single_signal_floor</code></td><td>单条告警置信度 ≥ 此值才允许单独唤醒</td><td class="n">0.98</td></tr>
+        <tr><td class="n"><code>budget_window</code></td><td>预算计数窗口（秒）</td><td class="n">3600</td></tr>
+      </table></div>
+      <p>单信号案件默认不醒（除非置信度 ≥ 地板值），要等拼链或确凿单点 IOC；窗口内超预算则拦下并记审计。</p>
+
+      <h3>检测调参</h3>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th><th>默认</th></tr>
+        <tr><td class="n"><code>innate_conf</code></td><td>黑名单秒拦置信度</td><td class="n">0.95</td></tr>
+        <tr><td class="n"><code>chain_bonus</code></td><td>每多一条告警的强度加成</td><td class="n">0.10</td></tr>
+        <tr><td class="n"><code>chain_cap</code></td><td>链路加成封顶</td><td class="n">0.30</td></tr>
+        <tr><td class="n"><code>grew</code></td><td>案件告警净增 ≥ 此数重跑系统2</td><td class="n">2</td></tr>
+        <tr><td class="n"><code>rag_limit</code></td><td>系统2 检索历史记忆条数</td><td class="n">5</td></tr>
+        <tr><td class="n"><code>restore_conf</code></td><td>「放回」信号上板置信度</td><td class="n">0.90</td></tr>
+        <tr><td class="n"><code>tolerance_ttl_days</code></td><td>白名单过期天数（0=永久）</td><td class="n">90</td></tr>
+        <tr><td class="n"><code>judge_concurrency</code></td><td>杏仁核并发上限</td><td class="n">5</td></tr>
+        <tr><td class="n"><code>deep_concurrency</code></td><td>系统2 并发上限</td><td class="n">2</td></tr>
+        <tr><td class="n"><code>mock_indicators</code></td><td>mock 规则关键词 → 权重</td><td>内置默认</td></tr>
+        <tr><td class="n"><code>mock_no_hit / base / ceiling / cutoff</code></td><td>mock 未命中分 / 基础分 / 上限 / 判定线</td><td class="n">0.15 / 0.32 / 0.72 / 0.50</td></tr>
+      </table></div>
+      <p>Mock 模式（没配 key）杏仁核用「关键词权重」规则打分：命中关键词累加权重（封顶 ceiling），置信度 ≥ cutoff 判可疑。</p>
+
+      <h3>数据接入（syslog）</h3>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th><th>默认</th></tr>
+        <tr><td class="n"><code>syslog_bind</code></td><td>监听地址</td><td>127.0.0.1</td></tr>
+        <tr><td class="n"><code>syslog_port</code></td><td>监听端口</td><td class="n">5514</td></tr>
+        <tr><td class="n"><code>consolidate_interval</code></td><td>夜间巩固间隔（秒）</td><td class="n">21600</td></tr>
+        <tr><td class="n"><code>retention_alert_days</code></td><td>告警保留（天）</td><td class="n">30</td></tr>
+        <tr><td class="n"><code>retention_case_days</code></td><td>案件/报告保留（天）</td><td class="n">180</td></tr>
+        <tr><td class="n"><code>api_token</code></td><td>机器入库 token</td><td>空 = 拒绝接入</td></tr>
+      </table></div>
+      <p>syslog 地址/端口改后需<strong>重启后端</strong>；巩固间隔、保留天数、token 下个周期生效。</p>
+
+      <h3>案件外发（Webhook）</h3>
+      <p>把需要深度处理的案件自动 POST 给下游（SOAR/SIEM/工单/通知）。</p>
+      <div class="tablewrap"><table>
+        <tr><th>字段</th><th>说明</th></tr>
+        <tr><td class="n"><code>name / url / token</code></td><td>目标标识 / 地址 / Bearer 认证</td></tr>
+        <tr><td class="n"><code>trigger</code></td><td>顶出即推(escalated) / 全部(all) / 仅手动(manual)</td></tr>
+        <tr><td class="n"><code>fields</code></td><td>勾选外发字段（报告子字段用 <code>report.xxx</code>）</td></tr>
+        <tr><td class="n"><code>headers / body</code></td><td>自定义请求头 / Jinja2 请求体模板</td></tr>
+      </table></div>
+
+      <h3>记忆管理</h3>
+      <div class="tablewrap"><table>
+        <tr><th>类型</th><th>文件</th><th>来源</th></tr>
+        <tr><td class="n">睡眠巩固记忆</td><td><code>memory.jsonl</code></td><td>夜间巩固蒸馏</td></tr>
+        <tr><td class="n">处置反馈</td><td><code>feedback.jsonl</code></td><td>标记误报/真阳、频率降级</td></tr>
+      </table></div>
+      <p>判错的记忆可在此删除或清空，避免污染后续研判的 RAG 上下文。</p>
+    </section>
+
+    <section id="perm">
+      <h2><span class="no">七</span>权限管理</h2>
+      <p>认证：JWT（HS256，24h）+ bcrypt 密码哈希。角色：<code>admin</code>（隐式全权限）/ <code>user</code>（按权限列表）。</p>
+      <div class="tablewrap"><table>
+        <tr><th>权限键</th><th>含义</th><th>覆盖</th></tr>
+        <tr><td class="n"><code>triage</code></td><td>分诊动作</td><td>标记误报/真阳、放回、改案件、外发、批量误报、免疫规则</td></tr>
+        <tr><td class="n"><code>config</code></td><td>配置写</td><td>旋钮/模式/模型/阈值/接入/来源映射/webhook/频率/门控</td></tr>
+        <tr><td class="n"><code>maintenance</code></td><td>维护</td><td>清库、夜间巩固、文件上传</td></tr>
+        <tr><td class="n"><code>users</code></td><td>用户管理</td><td>建号/删号/改角色/重置密码/配权限</td></tr>
+      </table></div>
+      <p>读接口（所有 GET）登录即可看。新建 <code>user</code> 默认 <code>["triage"]</code>；admin 在「用户」页逐人勾选。</p>
+    </section>
+
+    <section id="ops">
+      <h2><span class="no">八</span>运维与维护</h2>
+      <p><strong>健康状态</strong>：设置 → 健康状态，查看 DB 规模、syslog 监听（UDP/TCP/worker 存活）、当前旋钮、模型模式、最近入库时间。</p>
+      <p><strong>夜间巩固</strong>：定时（默认 6 小时）把当天案件蒸馏成检索记忆，供系统2 研判检索。可在「设置 → 立即夜间巩固」手动触发。</p>
+      <div class="warn"><strong>注意</strong>：夜间巩固只固化「检索记忆」，<strong>不回写免疫规则</strong>——规则只由分析师「标记真阳性」写入，避免未确认的误报被永久写进黑名单。</div>
+      <p><strong>备份/恢复</strong>：<code>./scripts/backup.sh</code> / <code>./scripts/restore.sh</code>。数据集中在数据目录，Docker 下挂载在命名卷 <code>neuroimmune-data</code>。</p>
+      <p><strong>保留策略</strong>：告警超期（默认 30 天）先归档到 <code>archive/</code> 再删除；案件/报告保留更久（默认 180 天）。</p>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2><span class="no">九</span>常见问题 FAQ</h2>
+      <p class="q">Q1：为什么「已配置来源」显示「暂无数据」？</p>
+      <p>库里还没有该来源的告警；或设备数据没匹配上来源映射。去「丘脑」看实际进来的 <code>source</code> 是什么，回来改映射。</p>
+      <p class="q">Q2：标记误报后，未来同样的攻击会不会被漏掉？</p>
+      <p>系统按「签名/形状」匹配白名单，无法区分「同形状的运维操作」和「复刻它的攻击」。但有三层兜底：① 降级留痕（丘脑可见、可放回）；② 白名单 TTL 到期自动失效（默认 90 天）；③ 签名细粒度（区分资产/账号/主机名）。</p>
+      <p class="q">Q3：「证据不足」和「关闭」有什么区别？</p>
+      <p>「证据不足」把案件置为「挂起 On Hold」，仍算待处理；「关闭」是终态，但可「重启」重新打开。</p>
+      <p class="q">Q4：状态为什么是英文？结论为什么是中文？</p>
+      <p>状态字段（New/In Progress/On Hold/Resolved/Closed）保持英文；结论（真阳性/可疑/误报/良性/证据不足）显示中文。</p>
+      <p class="q">Q5：如何让平台接收远程安全设备的日志？</p>
+      <p>①「高级设置 → 数据接入」把 syslog 地址设为 <code>0.0.0.0</code>（Docker 需映射 5514 端口）；② 防火墙放行 5514；③ 设备端配置 syslog 转发到 <code>平台IP:5514</code>；④ 在「来源映射」配好设备 IP/TAG/主机名 → 标签。</p>
+      <p class="q">Q6：清空数据库会清掉记忆吗？</p>
+      <p>不会。「清空数据库」只清告警/案件/报告等，记忆在「高级设置 → 记忆管理」单独清。</p>
+      <p class="q">Q7：批量标记误报为什么有的案件选不了？</p>
+      <p>已标记（有结论）的案件不可再被批量选中，避免重复标记。如需重新处理，进案件详情单独改结论。</p>
+    </section>
+
+  </main>
+</div>
