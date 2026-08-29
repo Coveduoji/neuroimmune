@@ -60,8 +60,8 @@ export const api = {
     j<{ learned: [string, string][] }>(`/cases/${id}/false-positive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
   truePositive: (id: number, reason = '') =>
     j<{ learned: [string, string][] }>(`/cases/${id}/true-positive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
-  bulkFalsePositive: (caseIds: number[]) =>
-    j<{ learned: [string, string][] }>(`/cases/bulk-false-positive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ case_ids: caseIds }) }),
+  bulkFalsePositive: (caseIds: number[], reason = '') =>
+    j<{ learned: [string, string][] }>(`/cases/bulk-false-positive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ case_ids: caseIds, reason }) }),
   alertDisposition: (alertId: number, verdict: string) =>
     j(`/alerts/${alertId}/disposition`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ verdict }) }),
   dashboard: () => j<import('../types').DashboardData>('/dashboard'),
@@ -103,6 +103,12 @@ export const api = {
   setSources: (body: object) =>
     j<import('../types').SourcesConfig>(`/sources`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   sourceStatus: () => j<{ items: import('../types').SourceStatus[] }>('/sources/status'),
+  memory: () => j<{ items: any[] }>('/memory'),
+  deleteMemory: (index: number) => j<{ items: any[] }>(`/memory/${index}`, { method: 'DELETE' }),
+  clearMemory: () => j<{ items: any[] }>('/memory', { method: 'DELETE' }),
+  feedback: () => j<{ items: any[] }>('/feedback'),
+  deleteFeedback: (index: number) => j<{ items: any[] }>(`/feedback/${index}`, { method: 'DELETE' }),
+  clearFeedback: () => j<{ items: any[] }>('/feedback', { method: 'DELETE' }),
   parsers: () => j<import('../types').ParsersConfig>('/parsers'),
   setParsers: (body: object) =>
     j<import('../types').ParsersConfig>(`/parsers`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),

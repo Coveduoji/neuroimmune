@@ -380,6 +380,42 @@ def source_status():
     return {"items": items}
 
 
+@router.get("/memory", dependencies=[Depends(auth.require_perm("config"))])
+def list_memory():
+    return {"items": db.get_memory()}
+
+
+@router.delete("/memory", dependencies=[Depends(auth.require_perm("config"))])
+def clear_memory():
+    db.clear_memory()
+    return {"items": db.get_memory()}
+
+
+@router.delete("/memory/{index}", dependencies=[Depends(auth.require_perm("config"))])
+def delete_memory(index: int):
+    if not db.delete_memory(index):
+        raise HTTPException(404, "记忆不存在")
+    return {"items": db.get_memory()}
+
+
+@router.get("/feedback", dependencies=[Depends(auth.require_perm("config"))])
+def list_feedback():
+    return {"items": db.get_feedback()}
+
+
+@router.delete("/feedback", dependencies=[Depends(auth.require_perm("config"))])
+def clear_feedback():
+    db.clear_feedback()
+    return {"items": db.get_feedback()}
+
+
+@router.delete("/feedback/{index}", dependencies=[Depends(auth.require_perm("config"))])
+def delete_feedback(index: int):
+    if not db.delete_feedback(index):
+        raise HTTPException(404, "反馈不存在")
+    return {"items": db.get_feedback()}
+
+
 # ---- 来源解析配置（方案 C：LLM 生成规则 + 运行时确定性解析）----
 
 GENERATE_PARSER_SYSTEM = (

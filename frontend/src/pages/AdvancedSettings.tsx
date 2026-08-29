@@ -26,6 +26,7 @@ const SECTIONS = [
   { id: 'detection', label: '检测调参' },
   { id: 'ingest', label: '数据接入（syslog）' },
   { id: 'webhooks', label: '案件外发（Webhook）' },
+  { id: 'memory', label: '记忆管理' },
 ];
 
 function KeyValueMap({ entries, onChange, keyPh, valPh }: {
@@ -67,6 +68,8 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [parserPreview, setParserPreview] = useState('');
   const [parserGenerating, setParserGenerating] = useState(false);
   const [webhooks, setWebhooks] = useState<WebhookConfig[] | null>(null);
+  const [memory, setMemory] = useState<any[] | null>(null);
+  const [feedback, setFeedback] = useState<any[] | null>(null);
   const [whName, setWhName] = useState('');
   const [whUrl, setWhUrl] = useState('');
   const [whTrigger, setWhTrigger] = useState('escalated');
@@ -87,6 +90,8 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     api.sourceStatus().then((r) => setSourceStatus(r.items));
     api.parsers().then(setParsers);
     api.webhooks().then((r) => setWebhooks(r.items));
+    api.memory().then((r) => setMemory(r.items));
+    api.feedback().then((r) => setFeedback(r.items));
   };
   useEffect(load, []);
 
@@ -133,6 +138,11 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     setSources(await api.setSources(clean));
     toast('已保存来源映射');
   };
+
+  const deleteMemory = async (i: number) => { setMemory((await api.deleteMemory(i)).items); toast('已删除该记忆'); };
+  const clearMemory = async () => { if (!confirm('清空全部睡眠巩固记忆？此操作不可撤销。')) return; setMemory((await api.clearMemory()).items); toast('已清空记忆'); };
+  const deleteFeedback = async (i: number) => { setFeedback((await api.deleteFeedback(i)).items); toast('已删除该反馈'); };
+  const clearFeedback = async () => { if (!confirm('清空全部处置反馈？此操作不可撤销。')) return; setFeedback((await api.clearFeedback()).items); toast('已清空反馈'); };
 
   const generateParser = async () => {
     if (!parserSource.trim() || !parserSamples.trim()) { toast('请填来源名和样本'); return; }
@@ -491,6 +501,48 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {section === 'memory' && (
+            <div className="card">
+              <div className="sec-label">记忆管理</div>
+              <p className="muted">睡眠巩固沉淀的记忆与处置反馈，供系统2 研判时检索。判错的可在此删除或清空。</p>
+
+              <div className="sec-label" style={{ marginTop: 12 }}>睡眠巩固记忆</div>
+              {memory === null ? <p className="muted">加载中…</p> : memory.length === 0 ? <p className="muted">暂无记忆</p> : (
+                <>
+                  <button className="btn danger" style={{ marginTop: 8 }} onClick={clearMemory}>清空全部记忆</button>
+                  {memory.map((m, i) => (
+                    <div key={i} className="alert-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div>{typeof m.summary === 'string' ? m.summary : JSON.stringify(m)}</div>
+                        {Array.isArray(m.ttps) && m.ttps.length > 0 && <div className="muted" style={{ fontSize: 12 }}>手法：{m.ttps.join('、')}</div>}
+                        {Array.isArray(m.false_positives) && m.false_positives.length > 0 && <div className="muted" style={{ fontSize: 12 }}>误报模式：{m.false_positives.join('、')}</div>}
+                      </div>
+                      <button className="chip-x" title="删除" onClick={() => deleteMemory(i)}>×</button>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <div className="sec-label" style={{ marginTop: 16 }}>处置反馈</div>
+              {feedback === null ? <p className="muted">加载中…</p> : feedback.length === 0 ? <p className="muted">暂无反馈</p> : (
+                <>
+                  <button className="btn danger" style={{ marginTop: 8 }} onClick={clearFeedback}>清空全部反馈</button>
+                  {feedback.map((f, i) => (
+                    <div key={i} className="alert-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div>{f.type ?? 'feedback'}{f.reason ? `：${f.reason}` : ''}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          {[f.asset, f.signal_type, f.case_uid, f.count !== undefined ? `count ${f.count}` : null, f.time].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      <button className="chip-x" title="删除" onClick={() => deleteFeedback(i)}>×</button>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>

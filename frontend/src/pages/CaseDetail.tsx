@@ -5,6 +5,7 @@ import { navigate } from '../nav';
 import type { CaseDetail as CaseDetailData, GraphData, Case, Alert } from '../types';
 import GraphView from '../components/GraphView';
 import ReportView from '../components/ReportView';
+import { statusLabel, verdictLabel } from '../labels';
 
 export default function CaseDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [data, setData] = useState<CaseDetailData | null>(null);
@@ -16,15 +17,20 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
   const [selectedAlert, setSelectedAlert] = useState<number | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<{ type: string; value: string } | null>(null);
 
+  const applyCase = (r: CaseDetailData) => {
+    setData(r);
+    setVerdict(r.case.verdict || '');
+  };
+
   useEffect(() => {
     setRelated(null);
     setSelectedAlert(null);
     setSelectedEntity(null);
-    api.getCase(id).then(setData);
+    api.getCase(id).then(applyCase);
     api.caseHippocampus(id).then(setGraph);
   }, [id]);
 
-  const refresh = () => api.getCase(id).then(setData);
+  const refresh = () => api.getCase(id).then(applyCase);
 
   const saveVerdict = async () => {
     if (!verdict) return;
@@ -38,7 +44,10 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
       const r = await api.truePositive(id, note);
       toast(`已标记真阳性，记住 ${r.learned.length} 条固有免疫规则`);
     } else {
-      await api.patchCase(id, { verdict, note });
+      // 证据不足 → 默认挂起（保留待处理），除非人工主动关闭
+      const body: { verdict: string; note: string; status?: string } = { verdict, note };
+      if (verdict === 'Insufficient Data') body.status = 'On Hold';
+      await api.patchCase(id, body);
       toast('已保存结论');
     }
     await refresh();
@@ -138,7 +147,7 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
               <div className="meta">
                 [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2)}
                 {a.innate ? ' · 固有免疫秒拦' : ''}
-                {a.verdict && <span className="tag up" style={{ marginLeft: 6 }}>{a.verdict}</span>}
+                {a.verdict && <span className="tag up" style={{ marginLeft: 6 }}>{verdictLabel(a.verdict)}</span>}
               </div>
               <div className="raw">{a.raw}</div>
               <div style={{ marginTop: 4, display: 'flex', gap: 6 }}>
@@ -163,7 +172,7 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
               <div className="muted">关联案件（{related.length}）</div>
               {related.map((rc) => (
                 <div key={rc.id} className="alert-item" style={{ cursor: 'pointer' }} onClick={() => navigate({ caseId: rc.id })}>
-                  <code style={{ color: 'var(--accent)' }}>{rc.correlation_uid}</code> · 强度 {rc.strength.toFixed(2)} · {rc.status || 'New'}
+                  <code style={{ color: 'var(--accent)' }}>{rc.correlation_uid}</code> · 强度 {rc.strength.toFixed(2)} · {statusLabel(rc.status || 'New')}
                 </div>
               ))}
               {related.length === 0 && <div className="muted">无其他关联案件</div>}
@@ -182,11 +191,15 @@ export default function CaseDetail({ id, onBack }: { id: number; onBack: () => v
         <select value={verdict} onChange={(e) => setVerdict(e.target.value)}>
           <option value="">设置结论…</option>
           {['True Positive', 'Suspicious', 'False Positive', 'Benign', 'Insufficient Data'].map((v) => (
-            <option key={v} value={v}>{v}</option>
+            <option key={v} value={v}>{verdictLabel(v)}</option>
           ))}
         </select>
         <button className="btn" disabled={!verdict || busy} onClick={saveVerdict}>保存结论</button>
-        <button className="btn" disabled={busy} onClick={() => patch({ status: 'Closed' })}>关闭案件</button>
+        {c.status === 'Closed' ? (
+          <button className="btn primary" disabled={busy} onClick={() => patch({ status: 'In Progress' })}>重启</button>
+        ) : (
+          <button className="btn" disabled={busy} onClick={() => patch({ status: 'Closed' })}>关闭案件</button>
+        )}
         <button className="btn" disabled={busy} onClick={pushCase}>外发</button>
         <button className="btn" onClick={() => api.exportCase(id).catch((e) => toast((e as Error).message))}>导出报告</button>
       </div>

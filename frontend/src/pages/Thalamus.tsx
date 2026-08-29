@@ -44,7 +44,7 @@ export default function Thalamus() {
         <h2>{t('thalamus')}</h2>
         <span className="sub">原始信号流 · {total} 条</span>
         <div className="spacer" />
-        <input type="text" placeholder="搜索 raw / 主体 / 类型…" value={q}
+        <input type="text" placeholder="搜索 raw / 主体 / 类型…" value={q} autoComplete="off"
           onChange={(e) => { setQ(e.target.value); setPage(0); }} style={{ width: 220 }} />
         <select value={source} onChange={(e) => { setSource(e.target.value); setPage(0); }}>
           <option value="">全部来源</option>

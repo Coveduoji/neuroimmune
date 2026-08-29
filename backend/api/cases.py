@@ -28,18 +28,37 @@ def list_cases(status: str | None = None, verdict: str | None = None, severity: 
 
 @router.post("/bulk-false-positive", dependencies=[Depends(auth.require_perm("triage"))])
 def bulk_false_positive(body: dict):
-    """批量标记误报：多个案件一次性回写免疫耐受。"""
+    """批量标记误报：多个案件一次性回写免疫耐受（与单条误报一致：留痕 + 记反馈 + 外发）。"""
     case_ids = (body or {}).get("case_ids", [])
+    reason = (body or {}).get("reason", "")
     learned_all = []
     for cid in case_ids:
-        if not db.get_case(cid):
+        case = db.get_case(cid)
+        if not case:
             continue
-        keys = [signature(a["source"], a["type"], a["raw"], a["asset"]) for a in db.get_case_alerts(cid)]
+        if case.get("verdict"):
+            continue  # 已标记（有结论）的案件跳过，避免重复标记/重复记反馈
+        alerts = db.get_case_alerts(cid)
+        keys = [signature(a["source"], a["type"], a["raw"], a["asset"]) for a in alerts]
         learned = tolerance.learn_signatures(keys)
         learned_all.extend(learned)
-        db.patch_case(cid, {"verdict": "False Positive", "status": "Closed"})
+        # 冲突检测：误报签名若已在黑名单，说明同一形状曾被判过真阳，记审计留给人工复核。
+        conflicts = [k for k in keys if k in innate.load_rules()]
+        if conflicts:
+            db.insert_audit("tolerance_conflict", f"case {cid}",
+                            json.dumps({"conflicts": conflicts}, ensure_ascii=False))
+        db.patch_case(cid, {"verdict": "False Positive", "status": "Closed", "disposition_note": reason})
         db.insert_audit("bulk_false_positive", f"case {cid}",
-                        json.dumps({"learned": learned}, ensure_ascii=False))
+                        json.dumps({"learned": learned, "reason": reason}, ensure_ascii=False))
+        # 处置理由作为学习素材（entities 保留资产给 RAG，keys 是签名给白名单）
+        db.append_feedback({
+            "type": "false_positive",
+            "case_uid": case["correlation_uid"],
+            "entities": [[a["asset"], a["type"]] for a in alerts],
+            "reason": reason,
+            "time": datetime.now().isoformat(),
+        })
+        webhook.notify("disposition", cid)
     return {"case_ids": case_ids, "learned": learned_all}
 
 

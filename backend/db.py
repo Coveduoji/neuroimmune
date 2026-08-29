@@ -8,6 +8,7 @@ import json
 import sqlite3
 import threading
 import time
+from pathlib import Path
 
 from paths import DB_PATH, FEEDBACK_PATH, MEMORY_PATH
 
@@ -212,6 +213,45 @@ def get_memory() -> list[dict]:
         if line:
             out.append(json.loads(line))
     return out
+
+
+def _jsonl_lines(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    return [l for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+
+def _rewrite_jsonl(path: Path, lines: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+
+def delete_memory(index: int) -> bool:
+    """删除 memory.jsonl 第 index 行（0-based），越界返回 False。"""
+    lines = _jsonl_lines(MEMORY_PATH)
+    if not (0 <= index < len(lines)):
+        return False
+    lines.pop(index)
+    _rewrite_jsonl(MEMORY_PATH, lines)
+    return True
+
+
+def clear_memory() -> None:
+    _rewrite_jsonl(MEMORY_PATH, [])
+
+
+def delete_feedback(index: int) -> bool:
+    """删除 feedback.jsonl 第 index 行（0-based），越界返回 False。"""
+    lines = _jsonl_lines(FEEDBACK_PATH)
+    if not (0 <= index < len(lines)):
+        return False
+    lines.pop(index)
+    _rewrite_jsonl(FEEDBACK_PATH, lines)
+    return True
+
+
+def clear_feedback() -> None:
+    _rewrite_jsonl(FEEDBACK_PATH, [])
 
 
 def reset() -> None:
@@ -676,7 +716,7 @@ def alert_trend(range_hours: int, bucket_seconds: int) -> list[dict]:
 
 # 案件状态机（对齐 agentic-soc 的合法转换）
 CASE_TRANSITIONS = {
-    "New": {"In Progress", "Closed"},
+    "New": {"In Progress", "On Hold", "Closed"},
     "In Progress": {"On Hold", "Resolved", "Closed"},
     "On Hold": {"In Progress", "Resolved", "Closed"},
     "Resolved": {"In Progress", "Closed"},
