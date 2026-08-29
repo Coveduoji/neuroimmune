@@ -96,6 +96,8 @@ def parse_configured(body: str, raw: str, src_name: str, cfg: dict) -> dict | No
     body：剥头后的消息体（strip_syslog 为真时），否则为整行；raw 始终是完整原始行。
     """
     for rule in (cfg or {}).get("parsers", []):
+        if rule.get("enabled") is False:  # 停用的规则跳过，保留配置不删除
+            continue
         if not _match_rule(rule, body):
             continue
         rtype = rule.get("type", "")

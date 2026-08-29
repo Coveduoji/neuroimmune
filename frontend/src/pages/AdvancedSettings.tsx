@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { toast } from '../toast';
 import { Field } from '../components/Field';
-import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig, SourceStatus, ParsersConfig } from '../types';
+import type { FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig, SourcesConfig, WebhookConfig, SourceStatus, ParsersConfig, ParserRule } from '../types';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
 
@@ -67,6 +67,8 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [parserSamples, setParserSamples] = useState('');
   const [parserPreview, setParserPreview] = useState('');
   const [parserGenerating, setParserGenerating] = useState(false);
+  const [ruleDetail, setRuleDetail] = useState<{ source: string; index: number; isNew: boolean } | null>(null);
+  const [ruleDraft, setRuleDraft] = useState('');
   const [webhooks, setWebhooks] = useState<WebhookConfig[] | null>(null);
   const [memory, setMemory] = useState<any[] | null>(null);
   const [feedback, setFeedback] = useState<any[] | null>(null);
@@ -175,6 +177,68 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     toast('已删除解析配置');
   };
 
+  const ruleSummary = (rule: ParserRule): string => {
+    const m = rule.map || {};
+    const ent = m.entities?.length || 0;
+    const sep = rule.type === 'dissect'
+      ? `分隔「${rule.delimiter}」· ${rule.fields?.length || 0} 字段`
+      : `「${rule.field_split}」/「${rule.value_split}」`;
+    return `${sep} · asset=${m.asset || '-'} · ${ent} 实体`;
+  };
+
+  const openRuleDetail = (source: string, index: number) => {
+    const rule = parsers?.[source]?.parsers?.[index];
+    if (!rule) return;
+    setRuleDetail({ source, index, isNew: false });
+    setRuleDraft(JSON.stringify(rule, null, 2));
+  };
+
+  const addRule = (source: string) => {
+    setRuleDetail({ source, index: parsers?.[source]?.parsers?.length ?? 0, isNew: true });
+    setRuleDraft(JSON.stringify({ match: '', type: 'dissect', delimiter: '', fields: [], map: {} }, null, 2));
+  };
+
+  const closeRuleDetail = () => setRuleDetail(null);
+
+  const saveRuleDetail = async () => {
+    if (!ruleDetail || !parsers) return;
+    let rule: ParserRule;
+    try { rule = JSON.parse(ruleDraft); } catch { toast('规则 JSON 不合法'); return; }
+    const srcCfg = parsers[ruleDetail.source] || { parsers: [] };
+    const list = [...(srcCfg.parsers || [])];
+    list[ruleDetail.index] = rule;
+    setParsers(await api.setParsers({ ...parsers, [ruleDetail.source]: { ...srcCfg, parsers: list } }));
+    toast('已保存规则');
+    setRuleDetail(null);
+  };
+
+  const deleteRule = async (source: string, index: number) => {
+    if (!parsers) return;
+    if (!confirm('删除该条规则？')) return;
+    const srcCfg = parsers[source];
+    const list = (srcCfg?.parsers || []).filter((_, i) => i !== index);
+    let next: ParsersConfig;
+    if (list.length === 0) {
+      next = { ...parsers };
+      delete next[source];
+    } else {
+      next = { ...parsers, [source]: { ...srcCfg, parsers: list } };
+    }
+    setParsers(await api.setParsers(next));
+    toast('已删除规则');
+    setRuleDetail(null);
+  };
+
+  const toggleRule = async (source: string, index: number) => {
+    if (!parsers) return;
+    const srcCfg = parsers[source];
+    const list = [...(srcCfg.parsers || [])];
+    const wasDisabled = list[index].enabled === false;
+    list[index] = { ...list[index], enabled: wasDisabled };  // wasDisabled ? true(启用) : false(停用)
+    setParsers(await api.setParsers({ ...parsers, [source]: { ...srcCfg, parsers: list } }));
+    toast(wasDisabled ? '已启用规则' : '已停用规则');
+  };
+
   const toggleField = (f: string) => setWhFields((s) => (s.includes(f) ? s.filter((x) => x !== f) : [...s, f]));
   const addWebhook = async () => {
     if (!whUrl) { toast('请填 URL'); return; }
@@ -196,6 +260,21 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
       <button className="btn back" onClick={onBack}>← 返回设置</button>
       <div className="page-head"><h2>高级设置</h2><span className="sub">阈值 · 模型 · 检测 · 接入 · 外发</span></div>
 
+      {ruleDetail ? (
+        <div className="card" style={{ maxWidth: 760 }}>
+          <button className="btn back" onClick={closeRuleDetail}>← 返回来源解析</button>
+          <div className="sec-label" style={{ marginTop: 12 }}>规则详情 · {ruleDetail.source}{ruleDetail.isNew ? '（新增）' : ''}</div>
+          <p className="muted">编辑规则完整 JSON，保存后立即生效（运行时确定性解析、精确实体拼链）。</p>
+          <textarea value={ruleDraft} onChange={(e) => setRuleDraft(e.target.value)}
+            style={{ width: '100%', minHeight: 360, fontFamily: 'monospace', marginTop: 8 }} />
+          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+            {!ruleDetail.isNew && <button className="btn danger" onClick={() => deleteRule(ruleDetail.source, ruleDetail.index)}>删除</button>}
+            <div style={{ flex: 1 }} />
+            <button className="btn" onClick={closeRuleDetail}>取消</button>
+            <button className="btn primary" onClick={saveRuleDetail}>保存</button>
+          </div>
+        </div>
+      ) : (
       <div className="settings-layout">
         <nav className="side-nav">
           {SECTIONS.map((s) => (
@@ -385,13 +464,35 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
               <div className="sec-label" style={{ marginTop: 16 }}>来源解析（精确实体）</div>
               <p className="muted">为来源配置解析规则：LLM 从样本生成，人工确认后保存；运行时确定性解析、精确实体拼链（消除版本号误抽）。</p>
               {parsers && Object.keys(parsers).length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  {Object.keys(parsers).map((src) => (
-                    <div key={src} className="alert-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <code>{src}（{parsers[src].parsers?.length ?? 0} 条规则）</code>
-                      <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeSourceParser(src)}>删</button>
-                    </div>
-                  ))}
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {Object.keys(parsers).map((src) => {
+                    const cfg = parsers[src];
+                    return (
+                      <div key={src} style={{ border: '1px solid var(--hairline)', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <b>{src}</b>
+                          {cfg.strip_syslog && <span className="tag">剥 syslog 头</span>}
+                          <span className="muted" style={{ fontSize: 12 }}>{cfg.parsers?.length ?? 0} 条规则</span>
+                          <div style={{ flex: 1 }} />
+                          <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => addRule(src)}>加规则</button>
+                          <button className="btn danger" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeSourceParser(src)}>删来源</button>
+                        </div>
+                        {(cfg.parsers ?? []).map((rule, i) => {
+                          const disabled = rule.enabled === false;
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--hairline)', opacity: disabled ? 0.5 : 1 }}>
+                              <code style={{ flex: 1, wordBreak: 'break-all' }}>{rule.match || '(无匹配条件)'}</code>
+                              <span className="badge">{rule.type}</span>
+                              <span className="muted" style={{ fontSize: 12 }}>{ruleSummary(rule)}</span>
+                              <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => toggleRule(src, i)}>{disabled ? '已停用' : '启用中'}</button>
+                              <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => openRuleDetail(src, i)}>详情</button>
+                              <button className="btn danger" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => deleteRule(src, i)}>删</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <div className="field-row" style={{ marginTop: 10 }}>
@@ -547,6 +648,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

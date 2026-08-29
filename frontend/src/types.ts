@@ -192,6 +192,7 @@ export interface ParserRule {
   field_split?: string;
   value_split?: string;
   fields?: string[];
+  enabled?: boolean;
   map: {
     time?: string;
     type?: string;
