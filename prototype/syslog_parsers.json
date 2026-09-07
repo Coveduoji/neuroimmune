@@ -1,0 +1,185 @@
+{
+  "天眼": {
+    "parsers": [
+      {
+        "match": "startswith:webids_alert",
+        "type": "dissect",
+        "delimiter": "|!",
+        "fields": [
+          "alert_type",
+          "serialno",
+          "rule_id",
+          "rule_name",
+          "write_date",
+          "vuln_type",
+          "sip",
+          "sport",
+          "dip",
+          "dport",
+          "severity",
+          "host"
+        ],
+        "map": {
+          "time": "write_date",
+          "type": "alert_type",
+          "asset": "dip",
+          "entities": [
+            [
+              "sip",
+              "ip"
+            ],
+            [
+              "dip",
+              "ip"
+            ],
+            [
+              "host",
+              "domain"
+            ]
+          ]
+        },
+        "enabled": true
+      },
+      {
+        "match": "startswith:webshell_alert",
+        "type": "dissect",
+        "delimiter": "|!",
+        "fields": [
+          "alert_type",
+          "serialno",
+          "rule_id",
+          "host",
+          "uri",
+          "file_md5",
+          "sip",
+          "sport",
+          "dip",
+          "dport",
+          "attack_type",
+          "write_date"
+        ],
+        "map": {
+          "time": "write_date",
+          "type": "alert_type",
+          "asset": "dip",
+          "entities": [
+            [
+              "sip",
+              "ip"
+            ],
+            [
+              "dip",
+              "ip"
+            ],
+            [
+              "file_md5",
+              "hash"
+            ]
+          ]
+        }
+      },
+      {
+        "match": "startswith:ips_alert",
+        "type": "dissect",
+        "delimiter": "|!",
+        "fields": [
+          "alert_type",
+          "serialno",
+          "rule_id",
+          "rule_name",
+          "write_date",
+          "vuln_type",
+          "sip",
+          "sport",
+          "dip",
+          "dport",
+          "severity"
+        ],
+        "map": {
+          "time": "write_date",
+          "type": "alert_type",
+          "asset": "dip",
+          "entities": [
+            [
+              "sip",
+              "ip"
+            ],
+            [
+              "dip",
+              "ip"
+            ]
+          ]
+        }
+      },
+      {
+        "match": "startswith:ioc_alert",
+        "type": "dissect",
+        "delimiter": "|!",
+        "fields": [
+          "alert_type",
+          "serialno",
+          "rule_id",
+          "host",
+          "uri",
+          "file_md5",
+          "sip",
+          "sport",
+          "dip",
+          "dport",
+          "write_date",
+          "severity",
+          "confidence"
+        ],
+        "map": {
+          "time": "write_date",
+          "type": "alert_type",
+          "asset": "dip",
+          "entities": [
+            [
+              "sip",
+              "ip"
+            ],
+            [
+              "dip",
+              "ip"
+            ],
+            [
+              "host",
+              "domain"
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "WAF": {
+    "strip_syslog": true,
+    "parsers": [
+      {
+        "match": "startswith:Timestamp/",
+        "type": "kv",
+        "field_split": ",",
+        "value_split": "/",
+        "map": {
+          "time": "Timestamp",
+          "type": "Event",
+          "asset": "Service IP",
+          "entities": [
+            [
+              "Client IP",
+              "ip"
+            ],
+            [
+              "Service IP",
+              "ip"
+            ],
+            [
+              "XFF Header",
+              "ip"
+            ]
+          ]
+        }
+      }
+    ]
+  }
+}

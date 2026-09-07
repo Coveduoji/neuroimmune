@@ -314,11 +314,18 @@ def set_sources_config(cfg: dict) -> dict:
 
 
 # ---- syslog 解析配置（方案 C：来源 → parser 规则，LLM 生成 + 人工确认后落盘）----
+# 统一持久化到数据目录；prototype/syslog_parsers.json 作为默认种子（内置天眼/WAF 等规则）。
+_PROTO_PARSERS_PATH = Path(__file__).resolve().parent.parent / "prototype" / "syslog_parsers.json"
 PARSERS_PATH = data_dir() / "syslog_parsers.json"
 
 
 def get_parsers_config() -> dict:
-    """读来源解析配置 {来源名: {strip_syslog?, parsers: [...]}}，无则空。"""
+    """读来源解析配置 {来源名: {strip_syslog?, parsers: [...]}}；首次从 prototype 播种内置规则。"""
+    if not PARSERS_PATH.exists():
+        seed = _read(_PROTO_PARSERS_PATH, {})
+        if seed:
+            PARSERS_PATH.write_text(json.dumps(seed, ensure_ascii=False, indent=2), encoding="utf-8")
+        return seed
     return _read(PARSERS_PATH, {})
 
 
