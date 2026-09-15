@@ -89,8 +89,9 @@ def status() -> dict:
 
 def start(bind: str | None = None, port: int | None = None) -> None:
     global listening, _udp_thread, _tcp_thread, _worker_threads
-    # 来源映射统一持久化到数据目录：缺失时播种，并让解析器读数据目录那份（而非源码目录默认文件）。
+    # 来源映射/解析规则统一持久化到数据目录：缺失时播种，并让解析器读数据目录那份（而非源码目录默认文件）。
     state.get_sources_config()
+    state.get_parsers_config()
     syslog_parser._SOURCES_PATH = str(state.SOURCES_PATH)
     syslog_parser._PARSERS_PATH = str(state.PARSERS_PATH)
     # 接入配置（设置页可改）优先，环境变量 fallback。改 bind/port 需重启后端（socket 已绑定）。
