@@ -12,10 +12,6 @@ import threading
 import time
 from pathlib import Path
 
-PROTO = str(Path(__file__).resolve().parent.parent / "prototype")
-if PROTO not in sys.path:
-    sys.path.insert(0, PROTO)
-
 import syslog as syslog_parser
 
 from app.core import logging as logging_setup

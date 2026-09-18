@@ -10,14 +10,10 @@ import argparse
 import sys
 from pathlib import Path
 
-PROTO = str(Path(__file__).resolve().parent.parent / "prototype")
-if PROTO not in sys.path:
-    sys.path.insert(0, PROTO)
-
-import signals
-
 from app import crud as db
 from app.services import pipeline
+
+import signals  # prototype 模块（经 app/__init__.py 的 sys.path shim 导入）
 
 
 def main() -> None:

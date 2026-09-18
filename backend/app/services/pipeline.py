@@ -12,10 +12,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-PROTO = str(Path(__file__).resolve().parent.parent / "prototype")
-if PROTO not in sys.path:
-    sys.path.insert(0, PROTO)
-
 import amygdala
 import artifact
 import blackboard

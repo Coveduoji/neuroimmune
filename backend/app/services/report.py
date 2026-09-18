@@ -18,10 +18,6 @@ import matplotlib
 matplotlib.use("Agg")  # 无 GUI 后端
 import matplotlib.pyplot as plt
 
-PROTO = str(Path(__file__).resolve().parent.parent / "prototype")
-if PROTO not in sys.path:
-    sys.path.insert(0, PROTO)
-
 from app import crud as db
 import innate as innate_mod
 from app.services import state

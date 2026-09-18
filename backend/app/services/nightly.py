@@ -15,10 +15,6 @@ import json
 import sys
 from pathlib import Path
 
-PROTO = str(Path(__file__).resolve().parent.parent / "prototype")
-if PROTO not in sys.path:
-    sys.path.insert(0, PROTO)
-
 from amygdala import _extract_json
 
 from app import crud as db

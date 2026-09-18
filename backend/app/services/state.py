@@ -295,7 +295,7 @@ def set_gating_config(single_signal_floor: float, budget_window: int) -> None:
 # ---- syslog 来源映射 ----
 # 统一持久化到数据目录（Docker 下在 /data 卷，重启不丢）；prototype 独立跑时仍读
 # prototype/syslog_sources.json 作为默认种子。
-_PROTO_SOURCES_PATH = Path(__file__).resolve().parent.parent / "prototype" / "syslog_sources.json"
+_PROTO_SOURCES_PATH = Path(__file__).resolve().parent.parent.parent / "prototype" / "syslog_sources.json"
 SOURCES_PATH = data_dir() / "syslog_sources.json"
 
 
@@ -315,7 +315,7 @@ def set_sources_config(cfg: dict) -> dict:
 
 # ---- syslog 解析配置（方案 C：来源 → parser 规则，LLM 生成 + 人工确认后落盘）----
 # 统一持久化到数据目录；prototype/syslog_parsers.json 作为默认种子（内置天眼/WAF 等规则）。
-_PROTO_PARSERS_PATH = Path(__file__).resolve().parent.parent / "prototype" / "syslog_parsers.json"
+_PROTO_PARSERS_PATH = Path(__file__).resolve().parent.parent.parent / "prototype" / "syslog_parsers.json"
 PARSERS_PATH = data_dir() / "syslog_parsers.json"
 
 
