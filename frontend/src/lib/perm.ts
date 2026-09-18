@@ -1,4 +1,4 @@
-import type { AuthUser } from './types';
+import type { AuthUser } from '../types/models';
 
 // 权限键 → 中文说明（与后端 auth.PERMISSIONS 对应）
 export const PERMISSIONS: Record<string, string> = {
@@ -9,6 +9,7 @@ export const PERMISSIONS: Record<string, string> = {
 };
 
 // admin 隐式全权限；user 按 permissions 列表判断
-export function hasPerm(user: AuthUser, perm: string): boolean {
+export function hasPerm(user: AuthUser | null, perm: string): boolean {
+  if (!user) return false;
   return user.role === 'admin' || (user.permissions ?? []).includes(perm);
 }

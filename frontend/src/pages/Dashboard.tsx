@@ -1,88 +1,102 @@
-import { useEffect, useState } from 'react';
-import { api } from '../api/client';
-import { navigate } from '../nav';
-import { useTerms } from '../terms';
-import ExportReport from '../components/ExportReport';
+import { useState } from 'react';
+import { Row, Col, Card, Statistic, Progress, Segmented, Button, Typography } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { dashboardApi } from '../api/dashboard';
 import TrendChart from '../components/TrendChart';
-import type { DashboardData, TrendData } from '../types';
+import ExportReport from '../components/report/ExportReport';
+import { useTerms } from '../hooks/useTerms';
 
 export default function Dashboard() {
   const { t } = useTerms();
-  const [d, setD] = useState<DashboardData | null>(null);
-  const [trend, setTrend] = useState<TrendData | null>(null);
-  const [trendRange, setTrendRange] = useState('24h');
-  const [showExport, setShowExport] = useState(false);
+  const navigate = useNavigate();
+  const [range, setRange] = useState('24h');
+  const [exportOpen, setExportOpen] = useState(false);
 
-  useEffect(() => {
-    const load = () => { api.dashboard().then(setD); };
-    load();
-    const t = setInterval(load, 15000);
-    return () => clearInterval(t);
-  }, []);
+  const { data: d } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: dashboardApi.dashboard,
+    refetchInterval: 15000,
+  });
 
-  useEffect(() => {
-    const loadTrend = () => { api.trend(trendRange).then(setTrend); };
-    loadTrend();
-    const t = setInterval(loadTrend, 15000);
-    return () => clearInterval(t);
-  }, [trendRange]);
+  const { data: trend } = useQuery({
+    queryKey: ['trend', range],
+    queryFn: () => dashboardApi.trend(range),
+    refetchInterval: 15000,
+  });
 
-  if (!d) return <div className="page empty">加载中…</div>;
+  if (!d) return <Card loading />;
 
   const { counts, tolerance, innate } = d;
   const total = Math.max(1, counts.alerts);
-  const denoise = counts.alerts > 0 ? Math.round((counts.alerts - counts.reports) / counts.alerts * 100) : 0;
+  const denoise = counts.alerts > 0 ? Math.round(((counts.alerts - counts.reports) / counts.alerts) * 100) : 0;
+
+  const kpis = [
+    { title: '案件', value: counts.cases, sub: '已归案', to: '/triage' },
+    { title: '告警', value: counts.alerts, sub: `上板 ${counts.surfaced} · 抑制 ${counts.suppressed}`, to: '/thalamus' },
+    { title: '被抑制', value: counts.suppressed, sub: '留痕可研判', to: '/thalamus' },
+    { title: '深度分析', value: counts.reports, sub: `唤醒 ${counts.reports} 次`, to: '/triage' },
+    { title: '实体', value: counts.artifacts, sub: '图节点', to: '/hippocampus' },
+    { title: '攻击链', value: counts.attack_chains, sub: '已拼链', to: '/triage' },
+    { title: t('tolerance'), value: tolerance.length, sub: '白名单', to: '/immune' },
+    { title: t('innate'), value: innate.length, sub: '规则', to: '/immune' },
+  ];
 
   return (
-    <div className="page">
-      <div className="page-head">
-        <h2>{t('dashboard')}</h2>
-        <div className="spacer" />
-        <button className="btn primary" onClick={() => setShowExport(true)}>导出报告</button>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>{t('dashboard')}</Typography.Title>
+        <div style={{ flex: 1 }} />
+        <Button type="primary" onClick={() => setExportOpen(true)}>导出报告</Button>
       </div>
 
-      <div className="grid g4" style={{ marginBottom: 16 }}>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.cases}</div><div className="k">案件</div><div className="d">已归案</div></div>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'thalamus' })}><div className="v">{counts.alerts}</div><div className="k">告警</div><div className="d">上板 {counts.surfaced} · 抑制 {counts.suppressed}</div></div>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'thalamus' })}><div className="v">{counts.suppressed}</div><div className="k">被抑制</div><div className="d">留痕可研判</div></div>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.reports}</div><div className="k">深度分析</div><div className="d">唤醒 {counts.reports} 次</div></div>
-      </div>
+      <Row gutter={[16, 16]}>
+        {kpis.map((k) => (
+          <Col xs={12} sm={12} md={6} key={k.title}>
+            <Card hoverable onClick={() => navigate(k.to)} size="small">
+              <Statistic title={k.title} value={k.value} />
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>{k.sub}</Typography.Text>
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-      <div className="grid g4" style={{ marginBottom: 16 }}>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'hippocampus' })}><div className="v">{counts.artifacts}</div><div className="k">实体</div><div className="d">图节点</div></div>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'triage' })}><div className="v">{counts.attack_chains}</div><div className="k">攻击链</div><div className="d">已拼链</div></div>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'immune' })}><div className="v">{tolerance.length}</div><div className="k">{t('tolerance')}</div><div className="d">白名单</div></div>
-        <div className="card kpi" style={{ cursor: 'pointer' }} onClick={() => navigate({ view: 'immune' })}><div className="v">{innate.length}</div><div className="k">{t('innate')}</div><div className="d">规则</div></div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="sec-label">告警降噪</div>
-        <div className="kpi" style={{ marginBottom: 10 }}>
-          <div className="v">{denoise}%</div>
-          <div className="k">降噪率</div>
-          <div className="d">{counts.alerts} 条告警 → {counts.reports} 条需深度分析</div>
+      <Card style={{ marginTop: 16 }} title="告警降噪">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 16 }}>
+          <Statistic title="降噪率" value={denoise} suffix="%" />
+          <Typography.Text type="secondary">
+            {counts.alerts} 条告警 → {counts.reports} 条需深度分析
+          </Typography.Text>
         </div>
-        <div className="funnel">
-          <div className="frow"><div className="lbl">告警</div><div className="track"><div className="fill" style={{ width: '100%' }} /></div><div className="count">{counts.alerts}</div></div>
-          <div className="frow"><div className="lbl">归案</div><div className="track"><div className="fill" style={{ width: `${Math.round(counts.cases / total * 100)}%` }} /></div><div className="count">{counts.cases}</div></div>
-          <div className="frow"><div className="lbl">深度分析</div><div className="track"><div className="fill teal" style={{ width: `${Math.round(counts.reports / total * 100)}%` }} /></div><div className="count">{counts.reports}</div></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 560 }}>
+          <Progress percent={100} format={() => `告警 ${counts.alerts}`} />
+          <Progress percent={Math.round((counts.cases / total) * 100)} strokeColor="#2a78d6" format={() => `归案 ${counts.cases}`} />
+          <Progress percent={Math.round((counts.reports / total) * 100)} strokeColor="#1baf7a" format={() => `深度分析 ${counts.reports}`} />
         </div>
-        <p className="muted" style={{ marginTop: 10 }}>把 {counts.alerts} 条告警聚合为 {counts.cases} 个案件，仅 {counts.reports} 个需要深度分析。</p>
-      </div>
+        <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+          把 {counts.alerts} 条告警聚合为 {counts.cases} 个案件，仅 {counts.reports} 个需要深度分析。
+        </Typography.Paragraph>
+      </Card>
 
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div className="sec-label" style={{ marginBottom: 0 }}>流量趋势</div>
-          <div className="spacer" />
-          <div className="subnav">
-            {[['24h', '近24小时'], ['7d', '近7天'], ['30d', '近30天']].map(([r, label]) => (
-              <button key={r} className={trendRange === r ? 'active' : ''} onClick={() => setTrendRange(r)}>{label}</button>
-            ))}
-          </div>
-        </div>
+      <Card
+        style={{ marginTop: 16 }}
+        title="流量趋势"
+        extra={
+          <Segmented
+            value={range}
+            onChange={(v) => setRange(v as string)}
+            options={[
+              { label: '近24小时', value: '24h' },
+              { label: '近7天', value: '7d' },
+              { label: '近30天', value: '30d' },
+            ]}
+          />
+        }
+      >
         {trend && <TrendChart buckets={trend.buckets} />}
-      </div>
-      {showExport && <ExportReport onClose={() => setShowExport(false)} />}
+      </Card>
+
+      <ExportReport open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 }

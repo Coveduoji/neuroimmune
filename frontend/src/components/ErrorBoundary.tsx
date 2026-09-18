@@ -1,10 +1,15 @@
-import { Component, ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
+import { Result, Button } from 'antd';
+
+interface Props {
+  children: ReactNode;
+}
 
 interface State {
   error: Error | null;
 }
 
-export default class ErrorBoundary extends Component<{ children: ReactNode }, State> {
+export default class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -14,13 +19,16 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
   render() {
     if (this.state.error) {
       return (
-        <div className="page">
-          <div className="card">
-            <h3>出错了</h3>
-            <p className="muted">{this.state.error.message}</p>
-            <button className="btn" onClick={() => this.setState({ error: null })}>重试</button>
-          </div>
-        </div>
+        <Result
+          status="error"
+          title="页面出错了"
+          subTitle={String(this.state.error?.message || this.state.error)}
+          extra={
+            <Button type="primary" onClick={() => this.setState({ error: null })}>
+              重试
+            </Button>
+          }
+        />
       );
     }
     return this.props.children;

@@ -1,17 +1,22 @@
+import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
-import Toaster from './components/Toaster';
-import { TermProvider } from './terms';
-import './index.css';
+import './styles/global.css';
 
-// 注意：不包 StrictMode —— React 18 的 StrictMode 会让 effect 双挂载，
-// Cytoscape 在双挂载下经常渲染出空白图（已知坑）。
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, refetchOnWindowFocus: false },
+  },
+});
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <TermProvider>
-      <App />
-    </TermProvider>
-    <Toaster />
-  </ErrorBoundary>,
+  <StrictMode>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </ErrorBoundary>
+  </StrictMode>,
 );
