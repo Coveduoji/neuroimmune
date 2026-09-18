@@ -110,25 +110,33 @@ export default function HippocampusGraph({
           neighbor: { stroke: '#2a78d6', lineWidth: 2.4 },
         },
       },
-      layout: { type: 'force' },
+      layout: { type: 'force', iterations: 100 },
       behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
       autoFit: 'view',
     });
 
     g.on('node:click', (evt: any) => {
-      const d = evt?.target?.data;
+      const id = evt?.target?.id;
+      if (!id) return;
+      const d = g.getNodeData(id)?.data as { type?: string; value?: string } | undefined;
       if (!d) return;
-      onSelectRef.current({ kind: 'node', type: d.type, value: d.value });
-      applyFocus(g, { nodeId: evt.target.id });
+      onSelectRef.current({ kind: 'node', type: d.type ?? '', value: d.value ?? '' });
+      applyFocus(g, { nodeId: id });
     });
 
     g.on('edge:click', (evt: any) => {
-      const d = evt?.target?.data;
+      const id = evt?.target?.id;
+      if (!id) return;
+      const d = g.getEdgeData(id)?.data as
+        | { sourceType?: string; sourceValue?: string; targetType?: string; targetValue?: string }
+        | undefined;
       if (!d) return;
       onSelectRef.current({
-        kind: 'edge', type1: d.sourceType, value1: d.sourceValue, type2: d.targetType, value2: d.targetValue,
+        kind: 'edge',
+        type1: d.sourceType ?? '', value1: d.sourceValue ?? '',
+        type2: d.targetType ?? '', value2: d.targetValue ?? '',
       });
-      applyFocus(g, { edgeId: evt.target.id });
+      applyFocus(g, { edgeId: id });
     });
 
     g.on('canvas:click', () => {
