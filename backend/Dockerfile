@@ -29,4 +29,4 @@ WORKDIR /app/backend
 
 EXPOSE 8000
 
-CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers"]
+CMD ["sh", "-c", "alembic upgrade head && exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers"]
