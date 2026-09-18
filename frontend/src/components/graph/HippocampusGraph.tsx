@@ -101,7 +101,7 @@ export default function HippocampusGraph({
         state: {
           dimmed: (d: any) => ({
             fill: ENTITY_COLORS[(d.data?.type as string) ?? ''] || '#888',
-            opacity: 0.15,
+            opacity: 0.35,
           }),
           focused: (d: any) => ({
             fill: ENTITY_COLORS[(d.data?.type as string) ?? ''] || '#888',
@@ -146,9 +146,11 @@ export default function HippocampusGraph({
       applyFocus(g, { edgeId: id });
     });
 
-    g.on('canvas:click', () => {
-      onSelectRef.current(null);
-      applyFocus(g, null);
+    g.on('click', (evt: any) => {
+      if (evt?.targetType === 'canvas') {
+        onSelectRef.current(null);
+        applyFocus(g, null);
+      }
     });
 
     g.render().then(() => {

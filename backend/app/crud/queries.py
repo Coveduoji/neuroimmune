@@ -197,13 +197,16 @@ def count_alerts_for_entity(type_, value, source=None) -> int:
 
 def get_alerts_for_entity_pair(type1, value1, type2, value2, source=None, sort="time", limit=200, offset=0):
     with SessionLocal() as s:
+        aa1 = aliased(AlertArtifact)
+        aa2 = aliased(AlertArtifact)
         a1 = aliased(Artifact)
         a2 = aliased(Artifact)
         conds = [a1.type == type1, a1.value == value1, a2.type == type2, a2.value == value2] + _alert_where(source)
         q = (select(Alert, Case.correlation_uid, Case.id)
-             .join(AlertArtifact, AlertArtifact.alert_id == Alert.id)
-             .join(a1, a1.id == AlertArtifact.artifact_id)
-             .join(a2, a2.id == AlertArtifact.artifact_id)
+             .join(aa1, aa1.alert_id == Alert.id)
+             .join(a1, a1.id == aa1.artifact_id)
+             .join(aa2, aa2.alert_id == Alert.id)
+             .join(a2, a2.id == aa2.artifact_id)
              .join(Case, Case.id == Alert.case_id)
              .where(*conds).distinct()
              .order_by(_order_by(sort)).limit(limit).offset(offset))
@@ -218,14 +221,17 @@ def get_alerts_for_entity_pair(type1, value1, type2, value2, source=None, sort="
 
 def count_alerts_for_entity_pair(type1, value1, type2, value2, source=None) -> int:
     with SessionLocal() as s:
+        aa1 = aliased(AlertArtifact)
+        aa2 = aliased(AlertArtifact)
         a1 = aliased(Artifact)
         a2 = aliased(Artifact)
         conds = [a1.type == type1, a1.value == value1, a2.type == type2, a2.value == value2] + _alert_where(source)
         q = (select(func.count(func.distinct(Alert.id)))
              .select_from(Alert)
-             .join(AlertArtifact, AlertArtifact.alert_id == Alert.id)
-             .join(a1, a1.id == AlertArtifact.artifact_id)
-             .join(a2, a2.id == AlertArtifact.artifact_id)
+             .join(aa1, aa1.alert_id == Alert.id)
+             .join(a1, a1.id == aa1.artifact_id)
+             .join(aa2, aa2.alert_id == Alert.id)
+             .join(a2, a2.id == aa2.artifact_id)
              .where(*conds))
         return s.execute(q).scalar_one()
 
