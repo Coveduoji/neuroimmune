@@ -50,8 +50,8 @@ BACKEND_PORT=8010 FRONTEND_PORT=5174 ./start.sh   # 自定义端口
 ### 手动启动
 
 ```bash
-# 后端
-cd backend && python3 -m uvicorn app:app --port 8000
+# 后端（先执行数据库迁移，再启动）
+cd backend && alembic upgrade head && python3 -m uvicorn app.main:app --port 8000
 
 # 前端（另开终端）
 cd frontend && npm install && npm run dev
