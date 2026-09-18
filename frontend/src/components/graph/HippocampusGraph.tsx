@@ -100,13 +100,15 @@ export default function HippocampusGraph({
         },
         state: {
           dimmed: (d: any) => ({
-            fill: ENTITY_COLORS[(d.data?.type as string) ?? ''] || '#888',
+            fill: ENTITY_COLORS[(d.data?.type ?? d.type) as string] || '#888',
             opacity: 0.35,
+            zIndex: 1,
           }),
           focused: (d: any) => ({
-            fill: ENTITY_COLORS[(d.data?.type as string) ?? ''] || '#888',
+            fill: ENTITY_COLORS[(d.data?.type ?? d.type) as string] || '#888',
             stroke: '#111827',
             lineWidth: 4,
+            zIndex: 10,
           }),
         },
       },
