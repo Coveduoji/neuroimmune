@@ -31,7 +31,7 @@ export default function Immune() {
             <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={clearTolerance}>清空</button>
           </div>
           <p className="muted" style={{ marginTop: 2 }}>按签名匹配（掩码 IP/哈希/数字）；命中即静默，连杏仁核都不叫。</p>
-          <div style={{ marginTop: 10, maxHeight: 520, overflowY: 'auto' }}>
+          <div style={{ marginTop: 10, maxHeight: 520, overflowY: 'auto', paddingRight: 16 }}>
             {tolerance.map((sig, i) => (
               <div key={i} className="alert-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <code style={{ flex: 1, wordBreak: 'break-all', whiteSpace: 'pre-wrap', background: 'transparent', padding: 0 }}>{sig}</code>
@@ -48,7 +48,7 @@ export default function Immune() {
             <button className="btn" style={{ padding: '2px 8px', fontSize: 12 }} onClick={clearInnate}>清空</button>
           </div>
           <p className="muted" style={{ marginTop: 2 }}>命中即边缘秒拦（conf 0.95），前额叶 不醒。</p>
-          <div style={{ marginTop: 10, maxHeight: 520, overflowY: 'auto' }}>
+          <div style={{ marginTop: 10, maxHeight: 520, overflowY: 'auto', paddingRight: 16 }}>
             {innate.map((sig, i) => (
               <div key={i} className="alert-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <code style={{ flex: 1, wordBreak: 'break-all', whiteSpace: 'pre-wrap', background: 'transparent', padding: 0 }}>{sig}</code>
