@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Row, Col, Card, List, Input, Select, Tag, Button, Typography, Space, App } from 'antd';
+import { Row, Col, Card, Listy, Input, Select, Tag, Button, Typography, Space, App, Pagination, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../api/dashboard';
@@ -88,42 +88,48 @@ export default function Thalamus() {
               </Space>
             }
           >
-            <List<RawAlert>
-              dataSource={data?.items ?? []}
-              loading={!data}
-              pagination={{
-                current: page + 1,
-                pageSize: PAGE,
-                total,
-                onChange: (p) => setPage(p - 1),
-                showSizeChanger: false,
-              }}
-              renderItem={(a) => (
-                <List.Item
-                  actions={
-                    a.suppressed ? [<Button key="r" size="small" onClick={() => restore(a.id)}>放回</Button>] : undefined
-                  }
-                >
-                  <div style={{ width: '100%' }}>
-                    <div style={{ fontSize: 12, color: '#8a8f98' }}>
-                      [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
-                      {a.suppressed ? <Tag style={{ marginLeft: 6 }}>被抑制</Tag> : null}
-                      {a.innate ? <Tag color="blue" style={{ marginLeft: 6 }}>固有免疫</Tag> : null}
-                    </div>
-                    <div style={{ fontSize: 13, marginTop: 2 }}>{a.raw}</div>
-                    {a.suppressed && a.why ? <div style={{ fontSize: 12, color: '#8a8f98' }}>原因：{a.why}</div> : null}
-                    {a.case_uid ? (
-                      <div style={{ fontSize: 12 }}>
-                        案件{' '}
-                        <Typography.Text code style={{ cursor: 'pointer', color: '#2a78d6' }} onClick={() => navigate(`/cases/${a.case_id!}`)}>
-                          {a.case_uid}
-                        </Typography.Text>
+            {!data ? (
+              <div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>
+            ) : (
+              <>
+                <Listy<RawAlert>
+                  items={data.items}
+                  rowKey={(a) => a.id}
+                  itemRender={(a) => (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: '#8a8f98' }}>
+                          [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
+                          {a.suppressed ? <Tag style={{ marginLeft: 6 }}>被抑制</Tag> : null}
+                          {a.innate ? <Tag color="blue" style={{ marginLeft: 6 }}>固有免疫</Tag> : null}
+                        </div>
+                        <div style={{ fontSize: 13, marginTop: 2 }}>{a.raw}</div>
+                        {a.suppressed && a.why ? <div style={{ fontSize: 12, color: '#8a8f98' }}>原因：{a.why}</div> : null}
+                        {a.case_uid ? (
+                          <div style={{ fontSize: 12 }}>
+                            案件{' '}
+                            <Typography.Text code style={{ cursor: 'pointer', color: '#2a78d6' }} onClick={() => navigate(`/cases/${a.case_id!}`)}>
+                              {a.case_uid}
+                            </Typography.Text>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                </List.Item>
-              )}
-            />
+                      {a.suppressed && <Button size="small" onClick={() => restore(a.id)}>放回</Button>}
+                    </div>
+                  )}
+                />
+                {total > PAGE && (
+                  <Pagination
+                    style={{ marginTop: 12, textAlign: 'center' }}
+                    current={page + 1}
+                    pageSize={PAGE}
+                    total={total}
+                    onChange={(p) => setPage(p - 1)}
+                    showSizeChanger={false}
+                  />
+                )}
+              </>
+            )}
           </Card>
         </Col>
 
@@ -135,18 +141,16 @@ export default function Thalamus() {
               ) : audit.items.length === 0 ? (
                 <Typography.Text type="secondary">暂无留痕。</Typography.Text>
               ) : (
-                <List
-                  size="small"
-                  dataSource={audit.items}
-                  renderItem={(x) => (
-                    <List.Item>
-                      <div>
-                        <div style={{ fontSize: 12, color: '#8a8f98' }}>
-                          [{x.created_at}] <b>{x.action}</b> · {x.entity}
-                        </div>
-                        <div style={{ fontSize: 13 }}>{x.changes}</div>
+                <Listy
+                  items={audit.items}
+                  rowKey={(x) => x.id}
+                  itemRender={(x) => (
+                    <div style={{ padding: '6px 0' }}>
+                      <div style={{ fontSize: 12, color: '#8a8f98' }}>
+                        [{x.created_at}] <b>{x.action}</b> · {x.entity}
                       </div>
-                    </List.Item>
+                      <div style={{ fontSize: 13 }}>{x.changes}</div>
+                    </div>
                   )}
                 />
               )}

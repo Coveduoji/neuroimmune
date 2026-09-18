@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Space, Typography, Tag, Button, Select, Input, List, App, Divider, Flex } from 'antd';
+import { Card, Row, Col, Space, Typography, Tag, Button, Select, Input, Listy, App, Divider, Flex } from 'antd';
 import { ArrowLeftOutlined, ShareAltOutlined, ExportOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -189,26 +189,25 @@ export default function CaseDetail() {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Card title="告警时间线" size="small">
-            <List
-              dataSource={alerts}
-              renderItem={(a) => (
-                <List.Item
+            <Listy
+              items={alerts}
+              rowKey={(a) => a.id}
+              itemRender={(a) => (
+                <div
                   onClick={() => toggleSelect(a.id)}
                   style={{ cursor: 'pointer', background: isAlertHighlighted(a) ? '#e3eefc' : undefined, padding: '8px 12px' }}
                 >
-                  <div style={{ width: '100%' }}>
-                    <div style={{ fontSize: 12, color: '#8a8f98' }}>
-                      [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2)}
-                      {a.innate ? ' · 固有免疫秒拦' : ''}
-                      {a.verdict && <Tag style={{ marginLeft: 6 }}>{verdictLabel(a.verdict)}</Tag>}
-                    </div>
-                    <div style={{ fontSize: 13, marginTop: 2 }}>{a.raw}</div>
-                    <Space size={6} style={{ marginTop: 6 }}>
-                      <Button size="small" disabled={busy} onClick={(e) => { e.stopPropagation(); markAlert(a.id, 'False Positive'); }}>误报</Button>
-                      <Button size="small" disabled={busy} onClick={(e) => { e.stopPropagation(); markAlert(a.id, 'True Positive'); }}>真阳性</Button>
-                    </Space>
+                  <div style={{ fontSize: 12, color: '#8a8f98' }}>
+                    [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2)}
+                    {a.innate ? ' · 固有免疫秒拦' : ''}
+                    {a.verdict && <Tag style={{ marginLeft: 6 }}>{verdictLabel(a.verdict)}</Tag>}
                   </div>
-                </List.Item>
+                  <div style={{ fontSize: 13, marginTop: 2 }}>{a.raw}</div>
+                  <Space size={6} style={{ marginTop: 6 }}>
+                    <Button size="small" disabled={busy} onClick={(e) => { e.stopPropagation(); markAlert(a.id, 'False Positive'); }}>误报</Button>
+                    <Button size="small" disabled={busy} onClick={(e) => { e.stopPropagation(); markAlert(a.id, 'True Positive'); }}>真阳性</Button>
+                  </Space>
+                </div>
               )}
             />
           </Card>

@@ -1,4 +1,4 @@
-import { Row, Col, Card, List, Button, Typography, App } from 'antd';
+import { Row, Col, Card, Listy, Button, Typography, App } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import { useTerms } from '../hooks/useTerms';
@@ -59,17 +59,14 @@ export default function Immune() {
       {items.length === 0 ? (
         <Typography.Text type="secondary">空</Typography.Text>
       ) : (
-        <List
-          size="small"
-          dataSource={items}
-          renderItem={(sig) => (
-            <List.Item
-              actions={[
-                <Button key="d" type="text" danger size="small" onClick={() => onRemove(sig)}>删除</Button>,
-              ]}
-            >
-              <Typography.Text code style={{ wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{sig}</Typography.Text>
-            </List.Item>
+        <Listy<string>
+          items={items}
+          rowKey={(sig) => sig}
+          itemRender={(sig) => (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0' }}>
+              <Typography.Text code style={{ wordBreak: 'break-all', whiteSpace: 'pre-wrap', flex: 1 }}>{sig}</Typography.Text>
+              <Button type="text" danger size="small" onClick={() => onRemove(sig)}>删除</Button>
+            </div>
           )}
         />
       )}

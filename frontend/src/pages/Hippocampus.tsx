@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Row, Col, Card, Select, Button, List, Typography, Segmented, Space } from 'antd';
+import { Row, Col, Card, Select, Button, Listy, Typography, Segmented, Space, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../api/dashboard';
@@ -116,13 +116,14 @@ export default function Hippocampus() {
                   />
                   <Typography.Text type="secondary">共 {events?.total ?? 0} 条</Typography.Text>
                 </Space>
-                <List
-                  size="small"
-                  dataSource={events?.items ?? []}
-                  loading={!events}
-                  renderItem={(e) => (
-                    <List.Item>
-                      <div style={{ width: '100%' }}>
+                {!events ? (
+                  <div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>
+                ) : (
+                  <Listy
+                    items={events.items}
+                    rowKey={(e) => e.id}
+                    itemRender={(e) => (
+                      <div style={{ padding: '6px 0' }}>
                         <div style={{ fontSize: 12, color: '#8a8f98' }}>
                           [{e.time}] {e.source}/{e.type} · conf {e.confidence?.toFixed(2)}
                         </div>
@@ -134,9 +135,9 @@ export default function Hippocampus() {
                           </Typography.Text>
                         </div>
                       </div>
-                    </List.Item>
-                  )}
-                />
+                    )}
+                  />
+                )}
               </>
             )}
           </Card>
