@@ -99,15 +99,22 @@ export default function HippocampusGraph({
           labelPlacement: 'bottom',
         },
         state: {
-          dimmed: { opacity: 0.12 },
-          focused: { lineWidth: 5, stroke: '#111827' },
+          dimmed: (d: any) => ({
+            fill: ENTITY_COLORS[(d.data?.type as string) ?? ''] || '#888',
+            opacity: 0.15,
+          }),
+          focused: (d: any) => ({
+            fill: ENTITY_COLORS[(d.data?.type as string) ?? ''] || '#888',
+            stroke: '#111827',
+            lineWidth: 4,
+          }),
         },
       },
       edge: {
-        style: { stroke: '#999', lineWidth: 1.2 },
+        style: { stroke: '#999', lineWidth: 2.5 },
         state: {
           dimmed: { opacity: 0.05 },
-          neighbor: { stroke: '#2a78d6', lineWidth: 2.4 },
+          neighbor: { stroke: '#2a78d6', lineWidth: 3 },
         },
       },
       layout: { type: 'force', iterations: 100 },
