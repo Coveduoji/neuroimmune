@@ -152,7 +152,7 @@ export default function Users() {
     <div>
       <Typography.Title level={4}>用户</Typography.Title>
 
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
         <Card title="修改我的密码" size="small">
           <Form form={pwdForm} layout="inline" onFinish={changePw}>
             <Form.Item name="old_password" rules={[{ required: true, message: '请输入当前密码' }]}>

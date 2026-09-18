@@ -187,7 +187,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     <Card size="small" title="模型接入">
       <Typography.Paragraph type="secondary">key 留空 = 回退 .env；key 掩码显示，输入新值才会覆盖。</Typography.Paragraph>
       {model && (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
           <div>
             <Typography.Text strong>杏仁核（系统1）</Typography.Text>
             <Space wrap style={{ display: 'flex', marginTop: 8 }}>
@@ -245,7 +245,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     <Card size="small" title="检测调参">
       <Typography.Paragraph type="secondary">案件强度 = 最强信号置信度 + min(封顶, 每额外告警 × 链加成)。</Typography.Paragraph>
       {detection && (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
           <Space wrap>
             <InputNumber addonBefore="链加成" step={0.05} value={detection.chain_bonus} onChange={(v) => setDetection({ ...detection, chain_bonus: v ?? 0 })} />
             <InputNumber addonBefore="封顶" step={0.05} value={detection.chain_cap} onChange={(v) => setDetection({ ...detection, chain_cap: v ?? 0 })} />
@@ -281,7 +281,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const ingestTab = (
     <Card size="small" title="数据接入（syslog）">
       {ingest && (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
           <Space wrap>
             <Input addonBefore="syslog 地址" value={ingest.syslog_bind} onChange={(e) => setIngest({ ...ingest, syslog_bind: e.target.value })} />
             <InputNumber addonBefore="syslog 端口" value={ingest.syslog_port} onChange={(v) => setIngest({ ...ingest, syslog_port: v ?? 0 })} />
@@ -366,7 +366,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
                 })}
               </div>
             )}
-            <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+            <Space orientation="vertical" style={{ width: '100%', marginTop: 8 }}>
               <Input addonBefore="来源名" placeholder="天眼" value={parserSource} onChange={(e) => setParserSource(e.target.value)} />
               <Input.TextArea placeholder={'webids_alert|!V3ee8315f|!26843s612|!dedecms XSS|!...'} value={parserSamples} onChange={(e) => setParserSamples(e.target.value)} rows={3} />
               <Button type="primary" loading={parserGenerating} onClick={async () => {

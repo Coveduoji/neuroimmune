@@ -146,7 +146,7 @@ export default function CaseDetail() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       <Flex gap={8}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/triage')}>返回队列</Button>
         <Button icon={<ShareAltOutlined />} onClick={() => navigate('/hippocampus')}>在海马体查看</Button>
