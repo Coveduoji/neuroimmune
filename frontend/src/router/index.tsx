@@ -1,19 +1,28 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { Spin } from 'antd';
 import { RequireAuth } from './guards';
 import MainLayout from '../layouts/MainLayout';
-import Login from '../pages/Login';
-import Dashboard from '../pages/Dashboard';
-import Triage from '../pages/Triage';
-import CaseDetail from '../pages/CaseDetail';
-import Thalamus from '../pages/Thalamus';
-import Immune from '../pages/Immune';
-import Hippocampus from '../pages/Hippocampus';
-import Settings from '../pages/Settings';
-import Users from '../pages/Users';
-import NotFound from '../pages/NotFound';
+
+// 路由级懒加载：把 @antv/g6（CaseDetail/Hippocampus）与 @ant-design/plots（Dashboard）
+// 拆成独立 chunk，避免首屏加载全部图表库。
+const Login = lazy(() => import('../pages/Login'));
+const Dashboard = lazy(() => import('../pages/Dashboard'));
+const Triage = lazy(() => import('../pages/Triage'));
+const CaseDetail = lazy(() => import('../pages/CaseDetail'));
+const Thalamus = lazy(() => import('../pages/Thalamus'));
+const Immune = lazy(() => import('../pages/Immune'));
+const Hippocampus = lazy(() => import('../pages/Hippocampus'));
+const Settings = lazy(() => import('../pages/Settings'));
+const Users = lazy(() => import('../pages/Users'));
+const NotFound = lazy(() => import('../pages/NotFound'));
+
+const wrap = (el: ReactNode) => (
+  <Suspense fallback={<div style={{ padding: 48, textAlign: 'center' }}><Spin /></div>}>{el}</Suspense>
+);
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <Login /> },
+  { path: '/login', element: wrap(<Login />) },
   {
     path: '/',
     element: <RequireAuth />,
@@ -22,17 +31,17 @@ export const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
-          { path: 'dashboard', element: <Dashboard /> },
-          { path: 'hippocampus', element: <Hippocampus /> },
-          { path: 'triage', element: <Triage /> },
-          { path: 'thalamus', element: <Thalamus /> },
-          { path: 'immune', element: <Immune /> },
-          { path: 'settings', element: <Settings /> },
-          { path: 'users', element: <Users /> },
-          { path: 'cases/:id', element: <CaseDetail /> },
+          { path: 'dashboard', element: wrap(<Dashboard />) },
+          { path: 'hippocampus', element: wrap(<Hippocampus />) },
+          { path: 'triage', element: wrap(<Triage />) },
+          { path: 'thalamus', element: wrap(<Thalamus />) },
+          { path: 'immune', element: wrap(<Immune />) },
+          { path: 'settings', element: wrap(<Settings />) },
+          { path: 'users', element: wrap(<Users />) },
+          { path: 'cases/:id', element: wrap(<CaseDetail />) },
         ],
       },
     ],
   },
-  { path: '*', element: <NotFound /> },
+  { path: '*', element: wrap(<NotFound />) },
 ]);
