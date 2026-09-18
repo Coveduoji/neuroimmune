@@ -8,44 +8,71 @@ export type Sel =
   | { kind: 'edge'; type1: string; value1: string; type2: string; value2: string }
   | null;
 
+const colorOf = (n: { data?: { type?: string } }) => ENTITY_COLORS[n.data?.type ?? ''] || '#888';
+
+// 不用 G6 状态机制（状态样式函数在多次切换时传参不可靠、易变白），
+// 直接显式改写每个节点/边的 style，再重绘，行为完全可控。
 function applyFocus(g: Graph, focus: { nodeId?: string; edgeId?: string } | null) {
   const nodes = g.getNodeData();
   const edges = g.getEdgeData();
-  const states: Record<string, string[]> = {};
+  const nodeUpdates: { id: string; style: Record<string, unknown> }[] = [];
+  const edgeUpdates: { id: string; style: Record<string, unknown> }[] = [];
 
   if (!focus) {
-    for (const n of nodes) states[n.id] = [];
-    for (const e of edges) if (e.id) states[e.id] = [];
-    g.setElementState(states);
-    return;
-  }
-
-  if (focus.nodeId) {
+    for (const n of nodes) {
+      nodeUpdates.push({ id: n.id, style: { fill: colorOf(n), opacity: 1, stroke: '#fff', lineWidth: 1, zIndex: 0 } });
+    }
+    for (const e of edges) {
+      if (e.id) edgeUpdates.push({ id: e.id, style: { stroke: '#999', lineWidth: 2.5, opacity: 1, zIndex: 0 } });
+    }
+  } else if (focus.nodeId) {
     const hood = new Set<string>([focus.nodeId]);
     for (const e of edges) {
       if (e.source === focus.nodeId) hood.add(e.target);
       if (e.target === focus.nodeId) hood.add(e.source);
     }
     for (const n of nodes) {
-      if (n.id === focus.nodeId) states[n.id] = ['focused'];
-      else if (hood.has(n.id)) states[n.id] = [];
-      else states[n.id] = ['dimmed'];
+      if (n.id === focus.nodeId) {
+        nodeUpdates.push({ id: n.id, style: { fill: colorOf(n), opacity: 1, stroke: '#111827', lineWidth: 4, zIndex: 10 } });
+      } else if (hood.has(n.id)) {
+        nodeUpdates.push({ id: n.id, style: { fill: colorOf(n), opacity: 1, stroke: '#fff', lineWidth: 1, zIndex: 5 } });
+      } else {
+        nodeUpdates.push({ id: n.id, style: { fill: colorOf(n), opacity: 0.35, stroke: '#fff', lineWidth: 1, zIndex: 1 } });
+      }
     }
     for (const e of edges) {
       if (!e.id) continue;
-      states[e.id] = e.source === focus.nodeId || e.target === focus.nodeId ? ['neighbor'] : ['dimmed'];
+      const on = e.source === focus.nodeId || e.target === focus.nodeId;
+      edgeUpdates.push({
+        id: e.id,
+        style: on ? { stroke: '#2a78d6', lineWidth: 3, opacity: 1, zIndex: 5 } : { stroke: '#999', lineWidth: 2.5, opacity: 0.15, zIndex: 1 },
+      });
     }
   } else if (focus.edgeId) {
     const edge = edges.find((e) => e.id === focus.edgeId);
     for (const n of nodes) {
-      states[n.id] = n.id === edge?.source || n.id === edge?.target ? ['focused'] : ['dimmed'];
+      const on = n.id === edge?.source || n.id === edge?.target;
+      nodeUpdates.push({
+        id: n.id,
+        style: on
+          ? { fill: colorOf(n), opacity: 1, stroke: '#111827', lineWidth: 4, zIndex: 10 }
+          : { fill: colorOf(n), opacity: 0.35, stroke: '#fff', lineWidth: 1, zIndex: 1 },
+      });
     }
     for (const e of edges) {
       if (!e.id) continue;
-      states[e.id] = e.id === focus.edgeId ? ['neighbor'] : ['dimmed'];
+      edgeUpdates.push({
+        id: e.id,
+        style: e.id === focus.edgeId
+          ? { stroke: '#2a78d6', lineWidth: 3, opacity: 1, zIndex: 5 }
+          : { stroke: '#999', lineWidth: 2.5, opacity: 0.15, zIndex: 1 },
+      });
     }
   }
-  g.setElementState(states);
+
+  g.updateNodeData(nodeUpdates);
+  g.updateEdgeData(edgeUpdates);
+  g.draw();
 }
 
 export default function HippocampusGraph({
@@ -97,27 +124,12 @@ export default function HippocampusGraph({
           labelFill: '#8a8f98',
           labelFontSize: 10,
           labelPlacement: 'bottom',
-        },
-        state: {
-          dimmed: (d: any) => ({
-            fill: ENTITY_COLORS[(d.data?.type ?? d.type) as string] || '#888',
-            opacity: 0.35,
-            zIndex: 1,
-          }),
-          focused: (d: any) => ({
-            fill: ENTITY_COLORS[(d.data?.type ?? d.type) as string] || '#888',
-            stroke: '#111827',
-            lineWidth: 4,
-            zIndex: 10,
-          }),
+          stroke: '#fff',
+          lineWidth: 1,
         },
       },
       edge: {
         style: { stroke: '#999', lineWidth: 2.5 },
-        state: {
-          dimmed: { opacity: 0.05 },
-          neighbor: { stroke: '#2a78d6', lineWidth: 3 },
-        },
       },
       layout: { type: 'force', iterations: 100 },
       behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
