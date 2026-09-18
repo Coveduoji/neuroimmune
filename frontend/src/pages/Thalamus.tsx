@@ -1,12 +1,159 @@
-import { Card, Empty, Typography } from 'antd';
+import { useState } from 'react';
+import { Row, Col, Card, List, Input, Select, Tag, Button, Typography, Space, App } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { dashboardApi } from '../api/dashboard';
 import { useTerms } from '../hooks/useTerms';
+import { errMsg } from '../api/http';
+import type { RawAlert } from '../types/models';
+
+const PAGE = 50;
 
 export default function Thalamus() {
   const { t } = useTerms();
+  const navigate = useNavigate();
+  const { message } = App.useApp();
+  const [q, setQ] = useState('');
+  const [source, setSource] = useState('');
+  const [suppressed, setSuppressed] = useState('');
+  const [sort, setSort] = useState<'time' | 'confidence'>('time');
+  const [page, setPage] = useState(0);
+
+  const params: Record<string, string> = { sort, limit: String(PAGE), offset: String(page * PAGE) };
+  if (q.trim()) params.q = q.trim();
+  if (source) params.source = source;
+  if (suppressed) params.suppressed = suppressed;
+
+  const { data } = useQuery({
+    queryKey: ['thalamus', q, source, suppressed, sort, page],
+    queryFn: () => dashboardApi.thalamus(params),
+    refetchInterval: 15000,
+  });
+  const { data: audit } = useQuery({
+    queryKey: ['audit'],
+    queryFn: dashboardApi.audit,
+  });
+
+  const total = data?.total ?? 0;
+
+  const restore = async (id: number) => {
+    try {
+      const r = await dashboardApi.restore(id);
+      message.success('已放回');
+      navigate(`/cases/${r.case_id}`);
+    } catch (e) {
+      message.error(errMsg(e));
+    }
+  };
+
   return (
-    <Card>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>{t('thalamus')}</Typography.Title>
-      <Empty description="开发中（M3 实现）" />
-    </Card>
+    <div>
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          {t('thalamus')} <Typography.Text type="secondary" style={{ fontSize: 14 }}>原始信号流 · {total} 条</Typography.Text>
+        </Typography.Title>
+      </Space>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={15}>
+          <Card
+            size="small"
+            title={
+              <Space wrap>
+                <Input.Search
+                  placeholder="搜索 raw / 主体 / 类型…" allowClear style={{ width: 200 }}
+                  onSearch={(v) => { setQ(v); setPage(0); }}
+                />
+                <Select
+                  value={source || undefined} placeholder="全部来源" style={{ width: 140 }} allowClear
+                  onChange={(v) => { setSource(v || ''); setPage(0); }}
+                  options={(data?.sources ?? []).map((s) => ({ value: s, label: s }))}
+                />
+                <Select
+                  value={suppressed || undefined} placeholder="全部（含被抑制）" style={{ width: 150 }} allowClear
+                  onChange={(v) => { setSuppressed(v || ''); setPage(0); }}
+                  options={[
+                    { value: '0', label: '仅上板' },
+                    { value: '1', label: '仅被抑制' },
+                  ]}
+                />
+                <Select
+                  value={sort} style={{ width: 110 }}
+                  onChange={(v) => setSort(v)}
+                  options={[
+                    { value: 'time', label: '按时间' },
+                    { value: 'confidence', label: '按置信度' },
+                  ]}
+                />
+              </Space>
+            }
+          >
+            <List<RawAlert>
+              dataSource={data?.items ?? []}
+              loading={!data}
+              pagination={{
+                current: page + 1,
+                pageSize: PAGE,
+                total,
+                onChange: (p) => setPage(p - 1),
+                showSizeChanger: false,
+              }}
+              renderItem={(a) => (
+                <List.Item
+                  actions={
+                    a.suppressed ? [<Button key="r" size="small" onClick={() => restore(a.id)}>放回</Button>] : undefined
+                  }
+                >
+                  <div style={{ width: '100%' }}>
+                    <div style={{ fontSize: 12, color: '#8a8f98' }}>
+                      [{a.time}] {a.source}/{a.type} · conf {a.confidence?.toFixed(2) ?? '—'}
+                      {a.suppressed ? <Tag style={{ marginLeft: 6 }}>被抑制</Tag> : null}
+                      {a.innate ? <Tag color="blue" style={{ marginLeft: 6 }}>固有免疫</Tag> : null}
+                    </div>
+                    <div style={{ fontSize: 13, marginTop: 2 }}>{a.raw}</div>
+                    {a.suppressed && a.why ? <div style={{ fontSize: 12, color: '#8a8f98' }}>原因：{a.why}</div> : null}
+                    {a.case_uid ? (
+                      <div style={{ fontSize: 12 }}>
+                        案件{' '}
+                        <Typography.Text code style={{ cursor: 'pointer', color: '#2a78d6' }} onClick={() => navigate(`/cases/${a.case_id!}`)}>
+                          {a.case_uid}
+                        </Typography.Text>
+                      </div>
+                    ) : null}
+                  </div>
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={9}>
+          <Card size="small" title="决策留痕（为什么没深想 / 为什么被拦）">
+            <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+              {!audit ? (
+                <Typography.Text type="secondary">加载中…</Typography.Text>
+              ) : audit.items.length === 0 ? (
+                <Typography.Text type="secondary">暂无留痕。</Typography.Text>
+              ) : (
+                <List
+                  size="small"
+                  dataSource={audit.items}
+                  renderItem={(x) => (
+                    <List.Item>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#8a8f98' }}>
+                          [{x.created_at}] <b>{x.action}</b> · {x.entity}
+                        </div>
+                        <div style={{ fontSize: 13 }}>{x.changes}</div>
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              )}
+            </div>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { http, downloadBlob, filenameFromDisposition } from './http';
-import type { DashboardData, TrendData } from '../types/models';
+import type { DashboardData, TrendData, RawAlert, AuditEntry, HippocampusData } from '../types/models';
 
 export const dashboardApi = {
   dashboard: async () => (await http.get<DashboardData>('/dashboard')).data,
@@ -9,6 +9,15 @@ export const dashboardApi = {
   toleranceClear: async () => (await http.post('/tolerance/clear')).data,
   innateRemove: async (signature: string) => (await http.post('/innate/remove', { signature })).data,
   innateClear: async () => (await http.post('/innate/clear')).data,
+  suppressed: async () => (await http.get<any[]>('/suppressed')).data,
+  restore: async (id: number) =>
+    (await http.post<{ case_id: number; correlation_uid: string }>(`/suppressed/${id}/restore`)).data,
+  thalamus: async (params: Record<string, string>) =>
+    (await http.get<{ items: RawAlert[]; total: number; sources: string[] }>(`/thalamus?${new URLSearchParams(params).toString()}`)).data,
+  audit: async () => (await http.get<{ items: AuditEntry[] }>('/audit')).data,
+  hippocampus: async () => (await http.get<HippocampusData>('/hippocampus')).data,
+  hippocampusEvents: async (params: Record<string, string>) =>
+    (await http.get<{ items: any[]; total: number; sources: string[] }>(`/hippocampus/events?${new URLSearchParams(params).toString()}`)).data,
   exportReport: async (body: object) => {
     const r = await http.post('/report/export', body, { responseType: 'blob' });
     downloadBlob(r.data as Blob, filenameFromDisposition(r.headers['content-disposition'] || '') || 'report');
