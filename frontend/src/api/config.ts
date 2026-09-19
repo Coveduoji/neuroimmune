@@ -2,6 +2,7 @@ import { http } from './http';
 import type {
   FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig,
   SourcesConfig, SourceStatus, ParsersConfig, SourceParserConfig, WebhookConfig,
+  AssetItem,
 } from '../types/models';
 
 export const configApi = {
@@ -23,6 +24,8 @@ export const configApi = {
   sources: async () => (await http.get<SourcesConfig>('/sources')).data,
   setSources: async (body: object) => (await http.put<SourcesConfig>('/sources', body)).data,
   sourceStatus: async () => (await http.get<{ items: SourceStatus[] }>('/sources/status')).data,
+  assets: async () => (await http.get<{ items: AssetItem[] }>('/assets')).data,
+  setAssets: async (items: AssetItem[]) => (await http.put<{ items: AssetItem[] }>('/assets', { items })).data,
   parsers: async () => (await http.get<ParsersConfig>('/parsers')).data,
   setParsers: async (body: object) => (await http.put<ParsersConfig>('/parsers', body)).data,
   generateParsers: async (body: object) =>

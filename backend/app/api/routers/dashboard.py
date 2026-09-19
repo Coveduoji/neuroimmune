@@ -366,6 +366,19 @@ def set_sources(body: dict):
     return state.set_sources_config(body)
 
 
+@router.get("/assets")
+def get_assets():
+    """内部资产清单：[{role, value, criticality}]。"""
+    return {"items": db.list_assets()}
+
+
+@router.put("/assets", dependencies=[Depends(deps.require_perm("config"))])
+def set_assets(body: dict):
+    """整体替换资产清单。body: {items: [{role, value, criticality}]}。"""
+    rows = (body or {}).get("items") or []
+    return {"items": db.replace_assets(rows)}
+
+
 @router.get("/sources/status")
 def source_status():
     """接入现状：按来源映射配置列出已配置来源，附带告警数 / 最近入库时间。"""

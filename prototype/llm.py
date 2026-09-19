@@ -28,8 +28,21 @@ JUDGE_SYSTEM = (
 )
 
 
+def _assets_context(signal: dict) -> str:
+    """从解析前置已标注的 entities 里提取「涉及我方资产」段落，供杏仁核研判参考。"""
+    ents = signal.get("entities") or []
+    ours = [e for e in ents if e.get("role")]
+    if not ours:
+        return "\n\n涉及我方资产：无（信号中的 IP/域名均为外部）"
+    lines = [
+        f"{e.get('type')} {e.get('value')} → {e.get('role')}（敏感度 {e.get('criticality', 'normal')}）"
+        for e in ours
+    ]
+    return "\n\n涉及我方资产（这些 IP/网段/域名是我们自己的，从它们发起的出网通常是正常的）：\n" + "\n".join(lines)
+
+
 def _judge_prompt(signal: dict) -> str:
-    return JUDGE_SYSTEM + "\n\n信号内容：\n" + json.dumps(signal, ensure_ascii=False)
+    return JUDGE_SYSTEM + _assets_context(signal) + "\n\n信号内容：\n" + json.dumps(signal, ensure_ascii=False)
 
 
 class ModelClient:

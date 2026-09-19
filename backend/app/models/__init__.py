@@ -108,3 +108,14 @@ class AuditLog(Base):
     entity: Mapped[str] = mapped_column(String, default="")
     changes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[str] = mapped_column(String, server_default=text("(datetime('now'))"))
+
+
+class Asset(Base):
+    __tablename__ = "assets"
+    __table_args__ = (Index("idx_assets_role", "role"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    role: Mapped[str] = mapped_column(String, default="")
+    value: Mapped[str] = mapped_column(String, default="")
+    criticality: Mapped[str] = mapped_column(String, default="normal")
+    created_at: Mapped[str] = mapped_column(String, server_default=text("(datetime('now'))"))

@@ -14,7 +14,7 @@ from sqlalchemy import select, func, text
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import SessionLocal
-from app.models import (User, Case, Alert, Artifact, AlertArtifact, Report, AuditLog)
+from app.models import (User, Case, Alert, Artifact, AlertArtifact, Report, AuditLog, Asset)
 from app.core.paths import FEEDBACK_PATH, MEMORY_PATH
 
 
@@ -289,6 +289,26 @@ def insert_audit(action: str, entity: str, changes: str) -> None:
 def datetime_now() -> str:
     import datetime as _dt
     return _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+
+# ---- 内部资产清单 ----
+
+def list_assets() -> list[dict]:
+    with SessionLocal() as s:
+        rows = s.execute(select(Asset).order_by(Asset.id)).scalars().all()
+        return [{"role": a.role, "value": a.value, "criticality": a.criticality} for a in rows]
+
+
+def replace_assets(rows: list[dict]) -> list[dict]:
+    """整体替换资产清单（前端编辑完一次性保存）。rows: [{role, value, criticality}]。"""
+    with SessionLocal() as s:
+        s.execute(text("DELETE FROM assets"))
+        for r in rows:
+            s.add(Asset(role=(r.get("role") or "").strip(),
+                        value=(r.get("value") or "").strip(),
+                        criticality=r.get("criticality") or "normal"))
+        s.commit()
+    return list_assets()
 
 
 # 复杂查询与聚合（re-export，保持 `from app.crud import list_cases` 等可用）。

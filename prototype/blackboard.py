@@ -24,6 +24,7 @@ class Event:
     reason: str
     label: str = ""  # 可选 ground-truth："benign"=已确认误报（免疫耐受回写用）
     innate: bool = False  # 固有免疫秒拦命中（已知家族，系统2无需再深想）
+    entities: list = field(default_factory=list)  # 富化后的实体 [{type,value,role,criticality}]
 
 
 @dataclass

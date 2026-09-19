@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Select, Table, Tabs, Typography, Space, Tag, App } from 'antd';
+import { Card, Button, Input, InputNumber, Select, Table, Tabs, Typography, Space, Tag, App, Modal } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
 import { configApi } from '../api/config';
 import { errMsg } from '../api/http';
 import type {
   FreqConfig, GatingConfig, ModelConfig, DetectionConfig, IngestConfig,
-  SourcesConfig, WebhookConfig, SourceStatus, ParsersConfig, ParserRule,
+  SourcesConfig, WebhookConfig, SourceStatus, ParsersConfig, ParserRule, AssetItem,
 } from '../types/models';
 
 interface PresetVals { suppress_below: number; escalate_above: number; budget: number; }
@@ -71,17 +71,21 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
   const [whToken, setWhToken] = useState('');
   const [whHeaders, setWhHeaders] = useState<[string, string][]>([]);
   const [whBody, setWhBody] = useState('');
+  const [assets, setAssets] = useState<AssetItem[]>([]);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchText, setBatchText] = useState('');
 
   const load = async () => {
     try {
-      const [p, f, g, m, d, ig, so, ss, pa, wh, mem, fb] = await Promise.all([
+      const [p, f, g, m, d, ig, so, ss, pa, wh, mem, fb, as] = await Promise.all([
         configApi.presets(), configApi.freq(), configApi.gating(), configApi.model(),
         configApi.detection(), configApi.ingest(), configApi.sources(), configApi.sourceStatus(),
         configApi.parsers(), configApi.webhooks(), configApi.memory(), configApi.feedback(),
+        configApi.assets(),
       ]);
       setPresets(p); setFreq(f); setGating(g); setModel(m); setDetection(d); setIngest(ig);
       setSources(so); setSourceStatus(ss.items); setParsers(pa); setWebhooks(wh.items);
-      setMemory(mem.items); setFeedback(fb.items);
+      setMemory(mem.items); setFeedback(fb.items); setAssets(as.items);
     } catch (e) {
       message.error(errMsg(e));
     }
@@ -96,6 +100,25 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     } catch (e) {
       message.error(errMsg(e));
     }
+  };
+
+  const updateAsset = (i: number, k: keyof AssetItem, v: string) =>
+    setAssets((s) => s.map((a, j) => (j === i ? { ...a, [k]: v } : a)));
+  const addAsset = () => setAssets((s) => [...s, { role: '', value: '', criticality: 'normal' }]);
+  const removeAsset = (i: number) => setAssets((s) => s.filter((_, j) => j !== i));
+  const saveAssets = () =>
+    save(async () => {
+      const cleaned = assets.filter((a) => a.role.trim() && a.value.trim());
+      setAssets((await configApi.setAssets(cleaned)).items);
+    }, '已保存资产清单');
+  const doBatchImport = () => {
+    const parsed = batchText.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+      const parts = l.split(/\s+/);
+      return { role: parts[1] || '内网网段', value: parts[0], criticality: 'normal' };
+    });
+    setAssets((s) => [...s, ...parsed]);
+    setBatchOpen(false);
+    setBatchText('');
   };
 
   const ruleSummary = (rule: ParserRule): string => {
@@ -147,6 +170,74 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
     );
     setRuleDetail(null);
   };
+
+  const assetsTab = (
+    <Card size="small" title="资产清单">
+      <Typography.Paragraph type="secondary">
+        配置「我们自己的资产」：角色 + IP/CIDR/域名 + 敏感度。命中资产的 IP/域名会在研判时标注；源 IP 为「出口IP」时温和降噪（置信度 ×0.85）。
+      </Typography.Paragraph>
+      <Table<AssetItem>
+        rowKey={(_, i) => String(i)}
+        dataSource={assets}
+        pagination={false}
+        size="small"
+        columns={[
+          {
+            title: '角色',
+            dataIndex: 'role',
+            width: 200,
+            render: (v: string, _: AssetItem, i: number) => (
+              <Input value={v} size="small" placeholder="出口IP / 内网网段 / 生产网段" onChange={(e) => updateAsset(i, 'role', e.target.value)} />
+            ),
+          },
+          {
+            title: '值（IP / CIDR / 域名）',
+            dataIndex: 'value',
+            render: (v: string, _: AssetItem, i: number) => (
+              <Input value={v} size="small" placeholder="1.2.3.4 / 10.0.0.0/8 / corp.example.com" onChange={(e) => updateAsset(i, 'value', e.target.value)} />
+            ),
+          },
+          {
+            title: '敏感度',
+            dataIndex: 'criticality',
+            width: 120,
+            render: (v: string, _: AssetItem, i: number) => (
+              <Select
+                value={v || 'normal'} size="small" style={{ width: '100%' }}
+                onChange={(nv) => updateAsset(i, 'criticality', nv)}
+                options={[
+                  { value: 'normal', label: '普通' },
+                  { value: 'important', label: '重要' },
+                  { value: 'critical', label: '核心' },
+                ]}
+              />
+            ),
+          },
+          {
+            title: '',
+            width: 56,
+            render: (_: unknown, __: AssetItem, i: number) => (
+              <Button size="small" danger onClick={() => removeAsset(i)}>删</Button>
+            ),
+          },
+        ]}
+      />
+      <Space style={{ marginTop: 12 }}>
+        <Button icon={<PlusOutlined />} onClick={addAsset}>添加资产</Button>
+        <Button onClick={() => setBatchOpen(true)}>批量导入</Button>
+        <Button type="primary" onClick={saveAssets}>保存</Button>
+      </Space>
+      <Modal title="批量导入资产" open={batchOpen} onCancel={() => setBatchOpen(false)} onOk={doBatchImport} okText="导入">
+        <Typography.Paragraph type="secondary">
+          每行一条：`IP/CIDR/域名 角色`（角色可省略，默认「内网网段」）。
+        </Typography.Paragraph>
+        <Input.TextArea
+          rows={6} placeholder={'1.2.3.4 出口IP\n10.0.0.0/8 内网网段\ncorp.example.com 自有域名'}
+          value={batchText} onChange={(e) => setBatchText(e.target.value)}
+        />
+      </Modal>
+    </Card>
+  );
 
   const presetsTab = (
     <Card size="small" title="阈值配置（四档）">
@@ -522,6 +613,7 @@ export default function AdvancedSettings({ onBack }: { onBack: () => void }) {
           { key: 'ingest', label: '数据接入（syslog）', children: ingestTab },
           { key: 'webhooks', label: '案件外发（Webhook）', children: webhooksTab },
           { key: 'memory', label: '记忆管理', children: memoryTab },
+          { key: 'assets', label: '资产清单', children: assetsTab },
         ]}
       />
     </div>

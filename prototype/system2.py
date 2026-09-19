@@ -33,6 +33,7 @@ def _event_dict(e: Event) -> dict:
     return {
         "time": e.time, "source": e.source, "asset": e.asset,
         "type": e.etype, "confidence": round(e.confidence, 2), "raw": e.raw,
+        "entities": e.entities,
     }
 
 

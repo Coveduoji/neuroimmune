@@ -14,6 +14,7 @@ from pathlib import Path
 
 import amygdala
 import artifact
+import assets as assets_mod
 import blackboard
 import config
 import graph as graphmod
@@ -37,6 +38,34 @@ _wake_lock = threading.Lock()
 # 归案/建案/写库的全局串行锁：并发 worker 下，同一实体首现可能重复建案、
 # get_or_create_artifact 可能撞 UNIQUE，必须串行化归案这一段（模型调用在锁外）。
 _ingest_lock = threading.Lock()
+
+# ---- 内部资产清单缓存 + 解析前置富化 ----
+_assets_cache: list[dict] | None = None
+_assets_cache_time = 0.0
+
+
+def _get_assets() -> list[dict]:
+    """读资产清单（进程内 TTL 缓存 10 秒；配置类数据低频改，改动最多 10 秒后生效）。"""
+    global _assets_cache, _assets_cache_time
+    now = time.time()
+    if _assets_cache is None or now - _assets_cache_time > 10:
+        _assets_cache = db.list_assets()
+        _assets_cache_time = now
+    return _assets_cache
+
+
+def _enrich_signal(signal: dict) -> None:
+    """解析前置富化：实体兜底抽取 + 资产匹配标注。raw 原样保留，只增补 entities 的 role/criticality。"""
+    if not signal.get("entities"):
+        ents = artifact.extract_entities({"asset": signal.get("asset", ""), "raw": signal.get("raw", "")})
+        signal["entities"] = [{"type": e.type, "value": e.value} for e in ents]
+    assets = _get_assets()
+    if assets:
+        for ent in signal.get("entities", []):
+            m = assets_mod.match_asset(ent.get("value", ""), assets)
+            if m:
+                ent["role"] = m["role"]
+                ent["criticality"] = m["criticality"]
 
 
 def _within_budget(budget: int, window: int) -> bool:
@@ -214,11 +243,15 @@ def process_signal(signal: dict, knob_name: str | None = None) -> dict:
         db.insert_suppressed_alert({**signal, "confidence": confidence}, why)
         return {"status": "suppressed", "why": why}
 
+    # 解析前置富化：实体兜底抽取 + 资产匹配标注（raw 原样保留）
+    _enrich_signal(signal)
+
     # 黑名单优先于白名单：宁可多报不可漏（签名若同时命中黑白名单，走秒拦而非静默）。
     if innate.match(signal, rules):
         e = blackboard.Event(
             time=signal["time"], source=signal["source"], asset=signal["asset"], etype=signal["type"],
             confidence=d["innate_conf"], raw=signal["raw"], reason="固有免疫秒拦：已知攻击家族", innate=True,
+            entities=signal.get("entities", []),
         )
     elif tolerance.is_tolerated(signal, tol, ttl):
         return _suppress("免疫耐受：已知好，白名单降级")
@@ -239,21 +272,32 @@ def process_signal(signal: dict, knob_name: str | None = None) -> dict:
                 "asset": signal["asset"], "signal_type": signal["type"],
                 "count": hist, "time": datetime.now().isoformat(),
             })
+        # 出口 IP 降噪：任一 IP 实体是我们的出口 IP → 内部出网，温和降噪
+        # （不误降 C2 回连——真正的可疑交给二期风险模型结合攻击结果细化）
+        egress_demoted = False
+        if any(ent.get("role") == "出口IP" for ent in signal.get("entities", [])):
+            v = amygdala.Verdict(
+                v.suspicious, round(v.confidence * 0.85, 2),
+                f"{v.reason}（源为出口 IP，内部出网）",
+            )
+            db.insert_audit("egress_demote", f"signal {signal.get('asset', '')}",
+                            json.dumps({"confidence": v.confidence}, ensure_ascii=False))
+            egress_demoted = True
         if v.confidence < knob.suppress_below:
             why = (f"频率降级：历史同类型告警 {hist} 次，疑似业务误报"
                    if freq_demoted else
+                   f"出口 IP 降噪：源为出口 IP（内部出网），降噪后 {v.confidence:.2f} < {knob.suppress_below}"
+                   if egress_demoted else
                    f"杏仁核低置信度（{v.confidence:.2f} < {knob.suppress_below}）")
             return _suppress(why, confidence=v.confidence)
         e = blackboard.Event(
             time=signal["time"], source=signal["source"], asset=signal["asset"], etype=signal["type"],
             confidence=v.confidence, raw=signal["raw"], reason=v.reason,
+            entities=signal.get("entities", []),
         )
 
-    # 精确实体优先：配置解析已抽出源/目的 IP 等，直接用（消除正则误抽）；否则正则兜底。
-    if signal.get("entities"):
-        ents = [artifact.Entity(x["type"], x["value"]) for x in signal["entities"]]
-    else:
-        ents = artifact.extract_entities({"asset": e.asset, "raw": e.raw})
+    # 实体：富化已抽出并标注，直接复用
+    ents = [artifact.Entity(x["type"], x["value"]) for x in signal.get("entities", [])]
 
     # 归案 + 写库在全局锁内串行（并发 worker 下避免重复建案/撞 UNIQUE）。
     # 模型调用（amygdala.judge）在锁外，锁内只有毫秒级 DB 读写，不构成瓶颈。

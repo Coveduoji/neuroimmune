@@ -220,3 +220,9 @@ export interface WebhookConfig {
   headers: Record<string, string>;
   body: string;
 }
+
+export interface AssetItem {
+  role: string;
+  value: string;
+  criticality: string;
+}
