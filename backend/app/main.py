@@ -18,7 +18,7 @@ import llm  # prototype 领域层（经 app/__init__.py 的 sys.path shim）
 from app import crud
 from app.core import bootstrap, logging as logging_setup
 from app.core.logging import get_logger
-from app.services import state, syslog_server
+from app.services import state, syslog_server, kafka_consumer
 from app.api.routers import auth as auth_api, cases, dashboard, ingest as ingest_api
 
 logger = get_logger("app")
@@ -52,6 +52,10 @@ async def lifespan(_app: FastAPI):
         syslog_server.start()
     except OSError as e:
         logger.warning("syslog 启动失败（端口可能被占用）: %s", e)
+    try:
+        kafka_consumer.start()  # 无 Kafka 环境变量时内部静默跳过
+    except Exception:
+        logger.exception("Kafka 消费者启动失败")
     threading.Thread(target=_consolidate_loop, daemon=True).start()
     yield
 
@@ -103,6 +107,7 @@ def health():
         "status": "ok",
         "db": crud.counts(),
         "syslog": syslog_server.status(),
+        "kafka": kafka_consumer.status(),
         "knob": state.get_knob_name(),
         "mode": state.get_model_mode(),
     }
