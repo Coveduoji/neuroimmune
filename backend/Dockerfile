@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # 先装依赖，利用 Docker 缓存层
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install -r /app/backend/requirements.txt
+RUN pip install -r /app/backend/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制代码：backend 与 prototype 必须同级（backend 运行时会 import ../prototype）
 COPY backend/ /app/backend/
