@@ -22,7 +22,7 @@ docker compose build
 
 echo "=== 2/4 导出镜像为 tar.gz ==="
 mkdir -p "$OUT_DIR"
-docker save neuroimmune-backend:latest neuroimmune-nginx:latest \
+docker save neuroimmune-backend:latest neuroimmune-nginx:latest apache/kafka:3.9.0 \
   | gzip > "$OUT_DIR/neuroimmune-images-$STAMP.tar.gz"
 
 echo "=== 3/4 拷贝部署文件 ==="
